@@ -1,15 +1,15 @@
 // app/_layout.tsx
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
+import { Slot } from 'expo-router';
+import { AuthProvider } from '../src/context/AuthContext';
+import { SocketProvider } from '../src/context/SocketContext'; // ✅ Imported SocketProvider
 
 export default function RootLayout() {
   return (
-    <>
-      <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false }}>
-        {/* We will add logic here later to switch between (auth) and (tabs) */}
-        <Stack.Screen name="(auth)" />
-      </Stack>
-    </>
+    <AuthProvider>
+      <SocketProvider>
+        {/* <Slot /> renders whatever screen the user is currently on */}
+        <Slot /> 
+      </SocketProvider>
+    </AuthProvider>
   );
 }
