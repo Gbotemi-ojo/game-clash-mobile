@@ -50,12 +50,18 @@ export default function DlsHubHomeScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ArenaHeader 
-        onOpenMenu={() => setMenuVisible(true)} 
-        // ✅ Synchronized with the Profile screen to point to the secure wallet
-        ticketCount={userProfile?.wallet?.tickets ?? 0}
-      />
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      
+      {/* ✅ Wrapper to guarantee the header sits completely above the scroll view */}
+      <View style={{ zIndex: 10, elevation: 10 }}>
+        <ArenaHeader 
+          onOpenMenu={() => {
+            console.log("🍔 Hamburger Menu Clicked!");
+            setMenuVisible(true);
+          }} 
+          ticketCount={userProfile?.wallet?.tickets ?? 0}
+        />
+      </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Animated.View style={{ opacity: fadeAnim1, transform: [{ translateY: translateY1 }] }}>
@@ -69,12 +75,14 @@ export default function DlsHubHomeScreen() {
         <View style={{ height: 40 }} />
       </ScrollView>
 
+      {/* ✅ The Modal Component */}
       <HamburgerMenuModal isVisible={isMenuVisible} onClose={() => setMenuVisible(false)} />
+
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f0f13' },
-  scrollContent: { padding: 20, gap: 24 }, 
+  scrollContent: { padding: 20, gap: 24, zIndex: 1 }, 
 });
