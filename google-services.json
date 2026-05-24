@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "701846238920",
+    "project_id": "game-clash-c9cb7",
+    "storage_bucket": "game-clash-c9cb7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:701846238920:android:ba8678dd8aff6e7dbc17fd",
+        "android_client_info": {
+          "package_name": "com.anonymous.gameclashmobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD5AzG2OSgJg7n8Lt1ksJvNjdq1DyR_jQ4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

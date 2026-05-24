@@ -9,7 +9,8 @@ import {
   KeyboardAvoidingView, 
   Platform,
   ActivityIndicator,
-  Keyboard
+  Keyboard,
+  Alert 
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
@@ -68,9 +69,11 @@ export default function ChatScreen() {
           if (historyRes.data) {
             setMessages(historyRes.data);
           }
+        } else {
+          Alert.alert("Server Error", "Could not initialize the chat room.");
         }
       } catch (err) {
-        console.log("Error initializing chat:", err);
+        Alert.alert("Network Error", "Failed to connect to chat services.");
       } finally {
         setIsLoading(false);
       }
@@ -96,7 +99,7 @@ export default function ChatScreen() {
              }
           }
           if (prev.find(m => m.id === msg.id)) return prev;
-          return [...prev, msg];
+          return [...prev, msg]; // We keep array in chronological order internally
         });
       }
     };
@@ -128,11 +131,14 @@ export default function ChatScreen() {
     if (!socket || !currentUser || !roomId) return;
     
     const unreadMessages = messages.filter(m => m.senderId !== currentUser.id && m.status !== 'read');
+    
     if (unreadMessages.length > 0) {
-      const unreadIds = unreadMessages.map(m => m.id);
-      
-      setMessages((prev) => prev.map(m => unreadIds.includes(m.id) ? { ...m, status: 'read' } : m));
-      socket.emit('mark_read', { messageIds: unreadIds, senderId: unreadMessages[0].senderId });
+      const unreadIds = unreadMessages.map(m => m.id).filter(id => typeof id === 'number'); 
+
+      if (unreadIds.length > 0) {
+        setMessages((prev) => prev.map(m => unreadIds.includes(m.id) ? { ...m, status: 'read' } : m));
+        socket.emit('mark_read', { messageIds: unreadIds, senderId: unreadMessages[0].senderId });
+      }
     }
   }, [messages, currentUser, socket, roomId]);
 
@@ -155,16 +161,11 @@ export default function ChatScreen() {
     setInputText('');
     
     socket.emit('send_message', { roomId, content: newMsgText, localId });
-    
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }, 100);
   };
 
   const formatTime = (dateString?: string) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const getTick = (status: string) => {
@@ -174,19 +175,23 @@ export default function ChatScreen() {
     return null;
   };
 
+  // ✅ Reverse the messages just for rendering so the list is inverted natively
+  const reversedMessages = [...messages].reverse();
+
   const renderMessage = ({ item, index }: { item: any, index: number }) => {
     const isMe = currentUser && item.senderId === currentUser.id;
-    const showDateSeparator = index === 0 || new Date(item.createdAt).toDateString() !== new Date(messages[index - 1].createdAt).toDateString();
+    
+    // In an inverted list, index 0 is the bottom (newest) message.
+    // We show a date separator if this is the last message in the list (oldest),
+    // OR if the next message down (which is chronologically older) is from a different day.
+    const isLastItem = index === reversedMessages.length - 1;
+    const olderMessage = !isLastItem ? reversedMessages[index + 1] : null;
+    
+    const showDateSeparator = isLastItem || 
+      new Date(item.createdAt).toDateString() !== new Date(olderMessage.createdAt).toDateString();
 
     return (
       <View>
-        {showDateSeparator && (
-          <View style={styles.datePillContainer}>
-            <Text style={styles.datePillText}>
-              {new Date(item.createdAt).toDateString() === new Date().toDateString() ? 'Today' : new Date(item.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-            </Text>
-          </View>
-        )}
         <View style={[styles.messageWrapper, isMe ? styles.messageWrapperMe : styles.messageWrapperThem]}>
           <View style={[styles.messageBubble, isMe ? styles.messageBubbleMe : styles.messageBubbleThem]}>
             <Text style={styles.messageText}>{item.content || item.text}</Text>
@@ -196,6 +201,17 @@ export default function ChatScreen() {
             </View>
           </View>
         </View>
+        
+        {/* Because it's inverted, placing this BELOW the bubble in code actually renders it ABOVE the bubble visually! */}
+        {showDateSeparator && (
+          <View style={styles.datePillContainer}>
+            <Text style={styles.datePillText}>
+              {new Date(item.createdAt).toDateString() === new Date().toDateString() 
+                ? 'Today' 
+                : new Date(item.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+            </Text>
+          </View>
+        )}
       </View>
     );
   };
@@ -208,64 +224,47 @@ export default function ChatScreen() {
     );
   }
 
-  const gamerTag = chatUser?.profile?.gamerTag || chatUser?.name || 'Opponent';
-
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Set behavior to undefined for Android so it doesn't double-push */}
       <KeyboardAvoidingView 
         style={styles.keyboardView} 
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        
-        {/* --- HEADER --- */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
               <Ionicons name="chevron-back" size={26} color="#fff" />
             </TouchableOpacity>
-            
             <View style={styles.avatarContainer}>
               <FontAwesome5 name="user-astronaut" size={20} color="#38bdf8" />
             </View>
-
             <View style={styles.headerTextContainer}>
-              <Text style={styles.headerName}>{gamerTag}</Text>
+              <Text style={styles.headerName}>{chatUser?.profile?.teamName || chatUser?.name || 'Opponent'}</Text>
               <View style={styles.activeStatusRow}>
                 <View style={styles.activeDot} />
                 <Text style={styles.activeText}>Active now</Text>
               </View>
             </View>
           </View>
-
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.iconBtn}>
-              <Ionicons name="call-outline" size={22} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn}>
-              <Ionicons name="videocam-outline" size={22} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn}>
-              <Ionicons name="ellipsis-vertical" size={22} color="#fff" />
-            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn}><Ionicons name="call-outline" size={22} color="#fff" /></TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn}><Ionicons name="videocam-outline" size={22} color="#fff" /></TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn}><Ionicons name="ellipsis-vertical" size={22} color="#fff" /></TouchableOpacity>
           </View>
         </View>
 
-        {/* --- CHAT CANVAS --- */}
+        {/* ✅ INVERTED FLATLIST: Always perfectly glued to the bottom */}
         <FlatList
           ref={flatListRef}
-          data={messages}
+          inverted
+          data={reversedMessages}
           keyExtractor={(item, index) => item.id ? item.id.toString() : index.toString()}
           renderItem={renderMessage}
           contentContainerStyle={styles.chatCanvas}
           showsVerticalScrollIndicator={false}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-          onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
           keyboardShouldPersistTaps="handled"
         />
 
-        {/* --- INPUT FOOTER --- */}
-        {/* The padding is now strictly fixed to 12px. The spacer below handles the safe area! */}
         <View style={[styles.footer, { paddingBottom: 12 }]}>
           <TouchableOpacity style={styles.attachBtn}>
             <Ionicons name="add" size={28} color="#a1a1aa" />
@@ -280,16 +279,6 @@ export default function ChatScreen() {
               onChangeText={setInputText}
               multiline
             />
-            {!inputText.trim() && (
-              <View style={styles.inputInsideIcons}>
-                <TouchableOpacity style={styles.insideIconBtn}>
-                  <Ionicons name="document-outline" size={20} color="#a1a1aa" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.insideIconBtn}>
-                  <Ionicons name="camera-outline" size={22} color="#a1a1aa" />
-                </TouchableOpacity>
-              </View>
-            )}
           </View>
 
           {inputText.trim() ? (
@@ -303,9 +292,7 @@ export default function ChatScreen() {
           )}
         </View>
         
-        {/* MAGIC SPACER: It sits at the bottom to protect the home bar, but vanishes instantly when the keyboard opens so there is zero gap! */}
         {!isKeyboardVisible && <View style={{ height: insets.bottom }} />}
-
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -316,7 +303,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f0f13' },
   keyboardView: { flex: 1 },
 
-  // Header Styles
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#18181b', paddingVertical: 12, paddingHorizontal: 10, borderBottomWidth: 1, borderBottomColor: '#27272a' },
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
   iconBtn: { padding: 6 },
@@ -328,12 +314,10 @@ const styles = StyleSheet.create({
   activeText: { color: '#10b981', fontSize: 12, fontWeight: '500' },
   headerRight: { flexDirection: 'row', alignItems: 'center' },
 
-  // Chat Canvas Styles
-  chatCanvas: { paddingHorizontal: 16, paddingVertical: 20, flexGrow: 1 },
+  chatCanvas: { paddingHorizontal: 16, paddingVertical: 20 },
   datePillContainer: { alignItems: 'center', marginBottom: 20, marginTop: 10 },
   datePillText: { backgroundColor: '#1f1f25', color: '#a1a1aa', fontSize: 12, fontWeight: 'bold', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, overflow: 'hidden' },
   
-  // Message Bubbles
   messageWrapper: { marginBottom: 16, flexDirection: 'row' },
   messageWrapperMe: { justifyContent: 'flex-end' },
   messageWrapperThem: { justifyContent: 'flex-start' },
@@ -347,14 +331,11 @@ const styles = StyleSheet.create({
   messageTime: { color: 'rgba(255,255,255,0.6)', fontSize: 10 },
   tickText: { color: 'rgba(255,255,255,0.6)', fontSize: 10 },
 
-  // Input Footer Styles
   footer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#18181b', paddingHorizontal: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#27272a' },
   attachBtn: { padding: 4, marginRight: 8 },
   
   inputWrapper: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#222225', borderRadius: 24, paddingLeft: 16, paddingRight: 8, minHeight: 44, maxHeight: 100 },
   textInput: { flex: 1, color: '#fff', fontSize: 15, paddingTop: 10, paddingBottom: 10 },
-  inputInsideIcons: { flexDirection: 'row', alignItems: 'center' },
-  insideIconBtn: { paddingHorizontal: 6 },
   
   micBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#222225', justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#3b82f6', justifyContent: 'center', alignItems: 'center', marginLeft: 8 },

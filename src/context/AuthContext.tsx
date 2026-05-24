@@ -1,4 +1,4 @@
-import { useRouter, useSegments } from 'expo-router';
+import { useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import React, { createContext, useContext, useEffect } from 'react';
 import { authClient } from '../lib/auth-client';
 
@@ -9,8 +9,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   
   const segments = useSegments();
   const router = useRouter();
+  
+  // ✅ 1. Get the mounting state of the root navigator
+  const rootNavigationState = useRootNavigationState();
 
   useEffect(() => {
+    // ✅ 2. Halt everything if the navigation tree isn't fully mounted yet!
+    if (!rootNavigationState?.key) return;
+
     // THE WIRETAP
     console.log(`[AUTH STATE] isPending: ${isPending} | session: ${session ? 'LOGGED IN' : 'NULL'} | segment: ${segments[0]}`);
 
@@ -25,7 +31,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("[ROUTER] No session found, kicking to sign-in.");
       router.replace('/(auth)/sign-in');
     }
-  }, [session, isPending, segments]);
+    
+  // ✅ 3. Add the key to the dependency array
+  }, [session, isPending, segments, rootNavigationState?.key]);
 
   return (
     <AuthContext.Provider value={{ session, isPending, refetch }}>
