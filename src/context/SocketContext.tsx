@@ -1,5 +1,7 @@
+// src/context/SocketContext.tsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { AppState } from 'react-native';
 import { useAuth } from './AuthContext';
 import { BACKEND_URL } from '../lib/auth-client';
 
@@ -10,33 +12,52 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
+    let currentSocket: Socket | null = null;
     const token = session?.session?.token;
 
-    if (token) {
-      // Strip /api/v1 from the BACKEND_URL for the socket connection
-      const socketUrl = BACKEND_URL.replace('/api/v1', '');
-      
-      const newSocket = io(socketUrl, {
-        auth: { token },
-        transports: ['websocket'],
-      });
+    const connectSocket = () => {
+      if (token && !currentSocket) {
+        const socketUrl = BACKEND_URL.replace('/api/v1', '');
+        currentSocket = io(socketUrl, {
+          auth: { token },
+          transports: ['websocket'],
+        });
 
-      newSocket.on('connect', () => {
-        console.log('✅ Global Socket Connected:', newSocket.id);
-      });
+        currentSocket.on('connect', () => console.log('✅ Global Socket Connected'));
+        setSocket(currentSocket);
+      }
+    };
 
-      setSocket(newSocket);
+    const disconnectSocket = () => {
+      if (currentSocket) {
+        console.log('❌ Global Socket Disconnected (App Backgrounded or Logged Out)');
+        currentSocket.disconnect();
+        currentSocket = null;
+        setSocket(null);
+      }
+    };
 
-      // Cleanup: Disconnect when token changes or component unmounts
-      return () => {
-        console.log('❌ Global Socket Disconnected');
-        newSocket.disconnect();
-      };
-    } else if (socket) {
-      // If user logs out (token becomes null), kill the socket
-      socket.disconnect();
-      setSocket(null);
+    // 1. Initial Check: Only connect if the app is actively on screen
+    if (AppState.currentState === 'active') {
+      connectSocket();
     }
+
+    // 2. The AppState Listener: Watch for the user minimizing the app
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        // App is back on screen! Reconnect to get live updates.
+        connectSocket();
+      } else if (nextAppState === 'background' || nextAppState === 'inactive') {
+        // App is minimized! Kill the socket so the backend sends a Native Push Notification.
+        disconnectSocket();
+      }
+    });
+
+    // 3. Cleanup on unmount or token change
+    return () => {
+      subscription.remove();
+      disconnectSocket();
+    };
   }, [session?.session?.token]);
 
   return (
@@ -46,5 +67,4 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Custom hook for screens to easily consume the socket
 export const useSocket = () => useContext(SocketContext);

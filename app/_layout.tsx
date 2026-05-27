@@ -1,9 +1,11 @@
+// app/_layout.tsx
 import { useEffect, useRef } from 'react';
 import { Stack } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { SocketProvider } from '../src/context/SocketContext';
 import { usePushNotifications } from '../src/hooks/usePushNotifications'; 
+import GlobalChatToast from '../src/components/GlobalChatToast'; // ✅ IMPORTED TOAST
 
 function AppContent() {
   const { expoPushToken } = usePushNotifications(); 
@@ -13,7 +15,7 @@ function AppContent() {
 
   useEffect(() => {
     if (expoPushToken && session?.user?.id && !hasAttemptedSend.current) {
-      hasAttemptedSend.current = true; // Lock it
+      hasAttemptedSend.current = true; 
 
       const sendTokenToBackend = async () => {
         try {
@@ -33,7 +35,6 @@ function AppContent() {
             return;
           }
 
-          // ✅ Strip any invisible quotes or spaces Expo might have added
           const cleanToken = token.replace(/['"]+/g, '').trim();
 
           const res = await fetch(`${apiUrl}/api/v1/users/push-token`, {
@@ -69,6 +70,8 @@ function AppContent() {
   return (
     <SocketProvider>
       <Stack screenOptions={{ headerShown: false }} /> 
+      {/* ✅ RENDERED GLOBALLY OVER THE ENTIRE APP */}
+      <GlobalChatToast />
     </SocketProvider>
   );
 }

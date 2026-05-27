@@ -58,7 +58,15 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow DLS Hub to use your location to determine your timezone for accurate matchmaking."
         }
-      ]
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#22d3ee"
+        }
+      ],
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,
