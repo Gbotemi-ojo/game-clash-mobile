@@ -198,6 +198,7 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequir
             onPressOut={handlePressOut}
             onPress={handleJoinLeague}
             disabled={isLoading}
+            testID="join-league-button"
           >
             {isLoading ? <ActivityIndicator color="#000" /> : <Text style={styles.ctaText}>Join Official League</Text>}
           </TouchableOpacity>
@@ -238,7 +239,7 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequir
         </View>
 
         {/* 🔴 THE FIX: onLayout captures the exact pixel coordinate so we know where to scroll */}
-        <View onLayout={(e) => setTimeSectionY(e.nativeEvent.layout.y)}>
+        <View testID="available-hours-section" onLayout={(e) => setTimeSectionY(e.nativeEvent.layout.y)}>
           <Text style={styles.inputLabel}>Available Hours</Text>
           
           {timeSlots.map((slot, index) => (

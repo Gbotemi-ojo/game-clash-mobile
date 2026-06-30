@@ -18,6 +18,9 @@ export default function DlsHubHomeScreen() {
   const fadeAnim2 = useRef(new Animated.Value(0)).current;
   const translateY2 = useRef(new Animated.Value(30)).current;
 
+  const scrollViewRef = useRef<ScrollView>(null);
+  const registrationCardYRef = useRef(0);
+
   const fetchDashboardData = async () => {
     try {
       const { data: profileData, error: profileErr } = await authClient.$fetch<any>(`${BACKEND_URL}/api/v1/users/me`);
@@ -49,6 +52,10 @@ export default function DlsHubHomeScreen() {
     ]).start();
   }, []);
 
+  const handleRequireScroll = (y: number) => {
+    scrollViewRef.current?.scrollTo({ y: registrationCardYRef.current + y, animated: true });
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       
@@ -63,9 +70,12 @@ export default function DlsHubHomeScreen() {
         />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Animated.View style={{ opacity: fadeAnim1, transform: [{ translateY: translateY1 }] }}>
-          <RegistrationCard activeLeague={activeLeague} onJoinSuccess={fetchDashboardData} />
+      <ScrollView ref={scrollViewRef} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <Animated.View 
+          style={{ opacity: fadeAnim1, transform: [{ translateY: translateY1 }] }}
+          onLayout={(e) => { registrationCardYRef.current = e.nativeEvent.layout.y; }}
+        >
+          <RegistrationCard activeLeague={activeLeague} onJoinSuccess={fetchDashboardData} onRequireScroll={handleRequireScroll} />
         </Animated.View>
 
         <Animated.View style={{ opacity: fadeAnim2, transform: [{ translateY: translateY2 }] }}>
