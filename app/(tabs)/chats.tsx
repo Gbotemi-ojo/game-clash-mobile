@@ -1,3 +1,4 @@
+// app/(tabs)/chats.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
@@ -15,6 +16,11 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { authClient, BACKEND_URL } from '../../src/lib/auth-client';
 import { useSocket } from '../../src/context/SocketContext';
 
+// IMPORT LOCAL DB AND DRIZZLE TOOLS
+import { db } from '../../src/db/localDb';
+import { localChatRooms } from '../../src/db/localSchema';
+import { desc, eq } from 'drizzle-orm';
+
 export default function ChatsListScreen() {
   const router = useRouter();
   const { socket } = useSocket();
@@ -23,16 +29,70 @@ export default function ChatsListScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Fetch the user's active chat rooms
   const fetchChats = async () => {
     try {
-      // NOTE: Update this endpoint if your backend uses a different route for getting all active chats
+      // 1. INSTANT LOCAL LOAD
+      const localData = await db.select().from(localChatRooms).orderBy(desc(localChatRooms.updatedAt));
+      if (localData.length > 0) {
+        setChatRooms(localData);
+        setIsLoading(false); 
+      } else if (localData.length === 0 && !isRefreshing) {
+        setIsLoading(true);
+      }
+
+      // 2. BACKGROUND SYNC WITH SERVER
       const { data, error } = await authClient.$fetch<any[]>(`${BACKEND_URL}/api/v1/chat/rooms`);
+      
       if (!error && data) {
-        setChatRooms(data);
+        for (const room of data) {
+          const roomName = room.title || room.name || 'Opponent';
+          
+          // 🛡️ Safely handle both string dates and objects parsed by better-fetch
+          let validBackendDate: string | null = null;
+          if (room.lastMessageAt) {
+            if (typeof room.lastMessageAt === 'string' && room.lastMessageAt.length > 5 && room.lastMessageAt !== '[object Object]' && room.lastMessageAt !== '{}') {
+              validBackendDate = room.lastMessageAt;
+            } else if (typeof room.lastMessageAt === 'object' && room.lastMessageAt instanceof Date) {
+              validBackendDate = room.lastMessageAt.toISOString();
+            }
+          }
+          
+          let safeMessage = null;
+          if (room.lastMessage && typeof room.lastMessage === 'string' && room.lastMessage !== '[object Object]' && room.lastMessage !== '{}') {
+            safeMessage = room.lastMessage;
+          }
+
+          const [existingRoom] = await db.select().from(localChatRooms).where(eq(localChatRooms.id, room.id));
+          
+          const timeToSave = validBackendDate || existingRoom?.updatedAt || new Date().toISOString();
+          
+          await db.insert(localChatRooms).values({
+            id: room.id || Math.floor(Math.random() * 100000), 
+            type: room.type || '1v1',
+            name: roomName,
+            targetUserId: room.targetUserId,
+            lastMessage: safeMessage,
+            lastMessageAt: validBackendDate,
+            unreadCount: room.unreadCount || 0,
+            updatedAt: timeToSave 
+          }).onConflictDoUpdate({
+            target: localChatRooms.id,
+            set: {
+              name: roomName,
+              lastMessage: safeMessage,
+              lastMessageAt: validBackendDate,
+              unreadCount: room.unreadCount || 0,
+              updatedAt: timeToSave 
+            }
+          });
+        }
+
+        // 3. RE-QUERY FOR SEAMLESS UI UPDATE
+        const freshLocalData = await db.select().from(localChatRooms).orderBy(desc(localChatRooms.updatedAt));
+        setChatRooms(freshLocalData);
       }
     } catch (err) {
-      console.log("Failed to fetch chat rooms", err);
+      console.log("Failed to sync chat rooms", err);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -50,10 +110,9 @@ export default function ChatsListScreen() {
     fetchChats();
   };
 
-  // Listen for global messages to bump chats to the top or update unread counts
   useEffect(() => {
     if (!socket) return;
-    const handleNewMessage = () => fetchChats(); // Refresh the list to show the latest message
+    const handleNewMessage = () => fetchChats(); 
     socket.on('new_message', handleNewMessage);
     return () => {
       socket.off('new_message', handleNewMessage);
@@ -61,22 +120,47 @@ export default function ChatsListScreen() {
   }, [socket]);
 
   const filteredChats = chatRooms.filter(room => 
-    room.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    room.lastMessage?.toLowerCase().includes(searchQuery.toLowerCase())
+    (room.name || room.title)?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (room.lastMessage || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const formatTime = (dateString?: string) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    const today = new Date();
-    if (date.toDateString() === today.toDateString()) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  // 🔴 THE FIX: Vanilla JS Date Parser (Hermes-Proof)
+  const formatTime = (dateInput?: string | number | Date | null) => {
+    if (!dateInput || dateInput === '{}' || dateInput === '[object Object]') return ''; 
+    
+    let d = new Date(dateInput);
+    
+    if (isNaN(d.getTime()) && typeof dateInput === 'string') {
+      d = new Date(dateInput.replace(' ', 'T') + (dateInput.includes('Z') ? '' : 'Z'));
     }
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    if (isNaN(d.getTime()) && typeof dateInput === 'string' && /^\d+$/.test(dateInput)) {
+      d = new Date(parseInt(dateInput, 10));
+    }
+
+    if (isNaN(d.getTime())) return '';
+
+    const today = new Date();
+    const isToday = d.toDateString() === today.toDateString();
+
+    if (isToday) {
+      // Manually construct the time to bypass Android Hermes crashes
+      let hours = d.getHours();
+      const minutes = d.getMinutes();
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12; // 0 should be 12
+      const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+      return `${hours}:${minutesStr} ${ampm}`;
+    } else {
+      // Manually construct the date (e.g., "May 28")
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${months[d.getMonth()]} ${d.getDate()}`;
+    }
   };
 
   const renderChatItem = ({ item }: { item: any }) => {
     const isUnread = item.unreadCount > 0;
+    const validDate = item.lastMessageAt || item.updatedAt;
 
     return (
       <TouchableOpacity 
@@ -90,15 +174,16 @@ export default function ChatsListScreen() {
 
         <View style={styles.chatInfo}>
           <View style={styles.chatHeader}>
-            <Text style={styles.chatName} numberOfLines={1}>{item.title || 'Opponent'}</Text>
+            <Text style={styles.chatName} numberOfLines={1}>{item.name || item.title || 'Opponent'}</Text>
+            
             <Text style={[styles.timeText, isUnread && styles.timeTextUnread]}>
-              {formatTime(item.lastMessageAt || item.updatedAt)}
+              {formatTime(validDate)}
             </Text>
           </View>
           
           <View style={styles.chatFooter}>
             <Text style={[styles.lastMessage, isUnread && styles.lastMessageUnread]} numberOfLines={1}>
-              {item.lastMessage || 'Tap to view messages...'}
+              {item.lastMessage && item.lastMessage !== '{}' && item.lastMessage !== '[object Object]' ? item.lastMessage : 'Tap to view messages...'}
             </Text>
             {isUnread && (
               <View style={styles.unreadBadge}>
@@ -159,33 +244,25 @@ export default function ChatsListScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f0f13' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 15 },
   headerTitle: { color: '#93c5fd', fontSize: 24, fontWeight: '900', letterSpacing: 1 },
   newChatBtn: { padding: 4 },
-
   searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#18181b', marginHorizontal: 20, marginBottom: 15, borderRadius: 12, paddingHorizontal: 12, height: 44, borderWidth: 1, borderColor: '#27272a' },
   searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, color: '#fff', fontSize: 15 },
-
   listContent: { paddingHorizontal: 20, paddingBottom: 100 },
-  
   chatRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#18181b', padding: 16, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: '#27272a' },
   avatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#1f1f25', borderWidth: 1, borderColor: '#38bdf8', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-  
   chatInfo: { flex: 1, justifyContent: 'center' },
   chatHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 },
   chatName: { color: '#fff', fontSize: 16, fontWeight: 'bold', flex: 1, marginRight: 10 },
   timeText: { color: '#71717a', fontSize: 12, fontWeight: '500' },
   timeTextUnread: { color: '#38bdf8', fontWeight: 'bold' },
-  
   chatFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   lastMessage: { color: '#a1a1aa', fontSize: 14, flex: 1, paddingRight: 10 },
   lastMessageUnread: { color: '#fff', fontWeight: 'bold' },
-  
   unreadBadge: { backgroundColor: '#3b82f6', minWidth: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
   unreadText: { color: '#fff', fontSize: 11, fontWeight: '900' },
-
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
   emptyText: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginTop: 16 },
   emptySubtext: { color: '#71717a', fontSize: 14, marginTop: 8, textAlign: 'center', paddingHorizontal: 40 }

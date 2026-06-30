@@ -5,7 +5,11 @@ import * as SecureStore from 'expo-secure-store';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { SocketProvider } from '../src/context/SocketContext';
 import { usePushNotifications } from '../src/hooks/usePushNotifications'; 
-import GlobalChatToast from '../src/components/GlobalChatToast'; // ✅ IMPORTED TOAST
+import GlobalChatToast from '../src/components/GlobalChatToast'; 
+
+// ✅ IMPORT AND RUN THE DB BOOT SCRIPT
+import { initializeLocalDatabase } from '../src/db/localDb';
+initializeLocalDatabase();
 
 function AppContent() {
   const { expoPushToken } = usePushNotifications(); 

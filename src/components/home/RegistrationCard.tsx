@@ -1,3 +1,4 @@
+// src/components/home/RegistrationCard.tsx
 import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Alert, ActivityIndicator, Modal, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,22 +10,26 @@ const HOURS = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '
 interface RegistrationCardProps {
   activeLeague: any;
   onJoinSuccess: () => void;
+  onRequireScroll?: (y: number) => void; // 🔴 NEW: Recieves the scroll commander
 }
 
-export default function RegistrationCard({ activeLeague, onJoinSuccess }: RegistrationCardProps) {
+export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequireScroll }: RegistrationCardProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const [isLoading, setIsLoading] = useState(false);
   
   const [uiLocation, setUiLocation] = useState('Detecting location...');
   const [ianaTimezone, setIanaTimezone] = useState('UTC');
 
-  // ✅ NEW: State is now an Array of time slots to support multiple windows!
+  // 🔴 THE FIX: Default state is now blank to force a decision
   const [timeSlots, setTimeSlots] = useState([
-    { id: '1', start: '18:00', end: '20:00' }
+    { id: '1', start: '--:--', end: '--:--' }
   ]);
   
-  // Time Picker Context: Knows exactly WHICH slot and WHICH field ('start' or 'end') is being edited
   const [pickerContext, setPickerContext] = useState<{id: string, field: 'start' | 'end'} | null>(null);
+  
+  // 🔴 NEW STATES for Error Handling & Scroll Tracking
+  const [hasTimeError, setHasTimeError] = useState(false);
+  const [timeSectionY, setTimeSectionY] = useState(0); 
 
   useEffect(() => {
     (async () => {
@@ -59,14 +64,13 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess }: Regist
   const handlePressIn = () => Animated.spring(scaleAnim, { toValue: 0.95, useNativeDriver: true }).start();
   const handlePressOut = () => Animated.spring(scaleAnim, { toValue: 1, friction: 3, tension: 40, useNativeDriver: true }).start();
 
-  // --- MULTI-SLOT LOGIC ---
   const addTimeSlot = () => {
     if (timeSlots.length >= 3) {
       Alert.alert("Limit Reached", "You can add a maximum of 3 time windows.");
       return;
     }
     const newId = Math.random().toString(36).substring(2, 9);
-    setTimeSlots([...timeSlots, { id: newId, start: '18:00', end: '20:00' }]);
+    setTimeSlots([...timeSlots, { id: newId, start: '--:--', end: '--:--' }]);
   };
 
   const removeTimeSlot = (id: string) => {
@@ -74,20 +78,19 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess }: Regist
     setTimeSlots(timeSlots.filter(s => s.id !== id));
   };
 
-  // --- SMART PICKER LOGIC ---
   const getAvailableHours = () => {
     if (!pickerContext) return [];
     const slot = timeSlots.find(s => s.id === pickerContext.id);
     if (!slot) return HOURS;
 
     if (pickerContext.field === 'start') {
-      return HOURS; // Can pick any start time
+      return HOURS; 
     } else {
-      // ✅ SMART FILTER: Only show end times that are AT LEAST 1 hour after the start time!
+      // Allow anything if start isn't picked yet
+      if (slot.start === '--:--') return HOURS; 
+
       const startHour = parseInt(slot.start);
       let validEndHours = HOURS.filter(h => parseInt(h) > startHour);
-      
-      // Allow ending at midnight if they select 23:00
       if (startHour === 23 || !validEndHours.includes('23:59')) {
         validEndHours.push('23:59');
       }
@@ -98,14 +101,15 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess }: Regist
   const selectTime = (time: string) => {
     if (!pickerContext) return;
     
+    setHasTimeError(false); // Clear error on interaction
+
     setTimeSlots(prev => prev.map(slot => {
       if (slot.id === pickerContext.id) {
         if (pickerContext.field === 'start') {
           const newStartHour = parseInt(time);
           let newEnd = slot.end;
           
-          // Auto-bump the End time if they pick a Start time that makes the current End time invalid
-          if (parseInt(newEnd) <= newStartHour) {
+          if (newEnd !== '--:--' && parseInt(newEnd) <= newStartHour) {
             newEnd = (newStartHour + 1 < 24) ? `${(newStartHour + 1).toString().padStart(2, '0')}:00` : '23:59';
           }
           return { ...slot, start: time, end: newEnd };
@@ -116,13 +120,24 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess }: Regist
       return slot;
     }));
     
-    setPickerContext(null); // Close modal
+    setPickerContext(null); 
   };
 
   const handleJoinLeague = async () => {
+    // 🔴 THE FIX: Validate before firing the API
+    const hasEmptySlot = timeSlots.some(s => s.start === '--:--' || s.end === '--:--');
+    
+    if (hasEmptySlot) {
+      setHasTimeError(true);
+      Alert.alert("Action Required", "Please select your available playing hours before joining.");
+      if (onRequireScroll && timeSectionY > 0) {
+        onRequireScroll(timeSectionY + 200); // Scrolls directly to the time input!
+      }
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // Clean out the local IDs and map to exact payload backend expects
       const formattedTimeSlots = timeSlots.map(s => ({ start: s.start, end: s.end }));
 
       const { data, error } = await authClient.$fetch<any>(`${BACKEND_URL}/api/v1/leagues/join`, {
@@ -160,7 +175,6 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess }: Regist
     );
   }
 
-  // Pre-calculate array for picker to avoid re-rendering issues
   const pickerOptions = getAvailableHours();
   const activeSlot = pickerContext ? timeSlots.find(s => s.id === pickerContext.id) : null;
 
@@ -223,48 +237,57 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess }: Regist
           <Ionicons name="location-outline" size={20} color="#888" />
         </View>
 
-        <Text style={styles.inputLabel}>Available Hours</Text>
-        
-        {/* ✅ Dynamic Multi-Slot Rendering */}
-        {timeSlots.map((slot, index) => (
-          <View key={slot.id} style={styles.timeSlotWrapper}>
-            <View style={styles.timeRow}>
-              <TouchableOpacity style={styles.timeInputBox} onPress={() => setPickerContext({ id: slot.id, field: 'start' })}>
-                <Text style={styles.timeLabel}>From</Text>
-                <View style={styles.timeValueRow}>
-                  <Ionicons name="time-outline" size={16} color="#888" />
-                  <Text style={styles.timeText}>{slot.start}</Text>
-                </View>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.timeInputBox} onPress={() => setPickerContext({ id: slot.id, field: 'end' })}>
-                <Text style={styles.timeLabel}>To</Text>
-                <View style={styles.timeValueRow}>
-                  <Ionicons name="time-outline" size={16} color="#888" />
-                  <Text style={styles.timeText}>{slot.end}</Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Only show delete button if there's more than 1 slot */}
-              {timeSlots.length > 1 && (
-                <TouchableOpacity style={styles.removeBtn} onPress={() => removeTimeSlot(slot.id)}>
-                  <Ionicons name="trash-outline" size={20} color="#ef4444" />
+        {/* 🔴 THE FIX: onLayout captures the exact pixel coordinate so we know where to scroll */}
+        <View onLayout={(e) => setTimeSectionY(e.nativeEvent.layout.y)}>
+          <Text style={styles.inputLabel}>Available Hours</Text>
+          
+          {timeSlots.map((slot, index) => (
+            <View key={slot.id} style={styles.timeSlotWrapper}>
+              <View style={styles.timeRow}>
+                
+                {/* 🔴 Glows red if hasTimeError is triggered and start is empty */}
+                <TouchableOpacity 
+                  style={[styles.timeInputBox, hasTimeError && slot.start === '--:--' && { borderColor: '#ef4444', borderWidth: 1 }]} 
+                  onPress={() => setPickerContext({ id: slot.id, field: 'start' })}
+                >
+                  <Text style={styles.timeLabel}>From</Text>
+                  <View style={styles.timeValueRow}>
+                    <Ionicons name="time-outline" size={16} color={hasTimeError && slot.start === '--:--' ? '#ef4444' : '#888'} />
+                    <Text style={[styles.timeText, hasTimeError && slot.start === '--:--' && { color: '#ef4444' }]}>{slot.start}</Text>
+                  </View>
                 </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        ))}
+                
+                {/* 🔴 Glows red if hasTimeError is triggered and end is empty */}
+                <TouchableOpacity 
+                  style={[styles.timeInputBox, hasTimeError && slot.end === '--:--' && { borderColor: '#ef4444', borderWidth: 1 }]} 
+                  onPress={() => setPickerContext({ id: slot.id, field: 'end' })}
+                >
+                  <Text style={styles.timeLabel}>To</Text>
+                  <View style={styles.timeValueRow}>
+                    <Ionicons name="time-outline" size={16} color={hasTimeError && slot.end === '--:--' ? '#ef4444' : '#888'} />
+                    <Text style={[styles.timeText, hasTimeError && slot.end === '--:--' && { color: '#ef4444' }]}>{slot.end}</Text>
+                  </View>
+                </TouchableOpacity>
 
-        {timeSlots.length < 3 && (
-          <TouchableOpacity style={styles.addSlotBtn} onPress={addTimeSlot}>
-            <Ionicons name="add-circle-outline" size={16} color="#3b82f6" />
-            <Text style={styles.addSlotText}>Add another time window</Text>
-          </TouchableOpacity>
-        )}
+                {timeSlots.length > 1 && (
+                  <TouchableOpacity style={styles.removeBtn} onPress={() => removeTimeSlot(slot.id)}>
+                    <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          ))}
+
+          {timeSlots.length < 3 && (
+            <TouchableOpacity style={styles.addSlotBtn} onPress={addTimeSlot}>
+              <Ionicons name="add-circle-outline" size={16} color="#3b82f6" />
+              <Text style={styles.addSlotText}>Add another time window</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
       </View>
 
-      {/* ✅ Smart Time Picker Modal */}
       <Modal visible={!!pickerContext} transparent animationType="fade" onRequestClose={() => setPickerContext(null)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.pickerBox}>
@@ -273,11 +296,7 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess }: Regist
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
               {pickerOptions.map((time) => (
-                <TouchableOpacity 
-                  key={time} 
-                  style={styles.timeOption} 
-                  onPress={() => selectTime(time)}
-                >
+                <TouchableOpacity key={time} style={styles.timeOption} onPress={() => selectTime(time)}>
                   <Text style={[
                     styles.timeOptionText, 
                     (pickerContext?.field === 'start' ? activeSlot?.start : activeSlot?.end) === time && styles.activeTimeText
@@ -293,7 +312,6 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess }: Regist
           </View>
         </View>
       </Modal>
-
     </View>
   );
 }
