@@ -40,6 +40,7 @@ export default function TournamentsScreen() {
   
   const [currentTime, setCurrentTime] = useState(Date.now());
   const isFirstLoad = useRef(true);
+  const serverTimeOffsetRef = useRef(0);
 
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [leagueData, setLeagueData] = useState<any>(null);
@@ -52,7 +53,9 @@ export default function TournamentsScreen() {
   const { socket } = useSocket();
 
   useEffect(() => {
-    const interval = setInterval(() => setCurrentTime(Date.now()), 30000);
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now() + serverTimeOffsetRef.current);
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -74,7 +77,13 @@ export default function TournamentsScreen() {
         authClient.$fetch<any>(`${BACKEND_URL}/api/v1/leagues/my-active`)
       ]);
 
-      if (meRes.data) setMyUserId(meRes.data.id);
+      if (meRes.data) {
+        setMyUserId(meRes.data.id);
+        if (meRes.data.serverTime) {
+          serverTimeOffsetRef.current = meRes.data.serverTime - Date.now();
+          setCurrentTime(Date.now() + serverTimeOffsetRef.current);
+        }
+      }
       
       if (leagueRes.data && leagueRes.data.id) {
         const activeLeague = leagueRes.data;
