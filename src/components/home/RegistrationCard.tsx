@@ -2,6 +2,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Alert, ActivityIndicator, Modal, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { authClient, BACKEND_URL } from '../../lib/auth-client';
 
@@ -14,6 +15,7 @@ interface RegistrationCardProps {
 }
 
 export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequireScroll }: RegistrationCardProps) {
+  const router = useRouter();
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const [isLoading, setIsLoading] = useState(false);
   
@@ -156,7 +158,17 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequir
       Alert.alert("Success!", "You have secured your spot in the next league.");
       onJoinSuccess(); 
     } catch (error: any) {
-      Alert.alert("Registration Denied", error.message);
+      const errMsg = error.message || '';
+      const isMissingDls = /dls|game.?[Ii][Dd]|player.?[Ii][Dd]/i.test(errMsg) || errMsg.includes('dlsPlayerId');
+
+      if (isMissingDls) {
+        Alert.alert("Registration Denied", errMsg, [
+          { text: 'OK' },
+          { text: 'Go to Profile', onPress: () => router.push('/(tabs)/profile') },
+        ]);
+      } else {
+        Alert.alert("Registration Denied", errMsg);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -250,6 +262,7 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequir
                 <TouchableOpacity 
                   style={[styles.timeInputBox, hasTimeError && slot.start === '--:--' && { borderColor: '#ef4444', borderWidth: 1 }]} 
                   onPress={() => setPickerContext({ id: slot.id, field: 'start' })}
+                  testID={`time-start-${slot.id}`}
                 >
                   <Text style={styles.timeLabel}>From</Text>
                   <View style={styles.timeValueRow}>
@@ -262,6 +275,7 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequir
                 <TouchableOpacity 
                   style={[styles.timeInputBox, hasTimeError && slot.end === '--:--' && { borderColor: '#ef4444', borderWidth: 1 }]} 
                   onPress={() => setPickerContext({ id: slot.id, field: 'end' })}
+                  testID={`time-end-${slot.id}`}
                 >
                   <Text style={styles.timeLabel}>To</Text>
                   <View style={styles.timeValueRow}>
@@ -297,7 +311,7 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequir
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
               {pickerOptions.map((time) => (
-                <TouchableOpacity key={time} style={styles.timeOption} onPress={() => selectTime(time)}>
+                <TouchableOpacity key={time} style={styles.timeOption} onPress={() => selectTime(time)} testID={`time-option-${time}`}>
                   <Text style={[
                     styles.timeOptionText, 
                     (pickerContext?.field === 'start' ? activeSlot?.start : activeSlot?.end) === time && styles.activeTimeText
