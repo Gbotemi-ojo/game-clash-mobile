@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign, FontAwesome5 } from '@expo/vector-icons';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
@@ -12,12 +13,15 @@ GoogleSignin.configure({
 
 export default function SignInScreen() {
   const { refetch } = useAuth();
+  const [loading, setLoading] = useState(false);
 
   const handleAuthLogin = async (provider: 'Apple' | 'Google') => {
     if (provider === 'Apple') {
       Alert.alert("Coming Soon", "Apple Auth will be enabled when we do the iOS cloud build!");
       return;
     }
+
+    setLoading(true);
 
     try {
       await GoogleSignin.hasPlayServices();
@@ -54,6 +58,8 @@ export default function SignInScreen() {
     } catch (error: any) {
       console.error(error);
       Alert.alert("Login Failed", "Could not complete native Google sign in.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -75,15 +81,19 @@ export default function SignInScreen() {
               style={styles.authButton} 
               activeOpacity={0.7}
               onPress={() => handleAuthLogin('Apple')}
+              testID="apple-button"
             >
               <AntDesign name="apple" size={20} color={COLORS.text} style={styles.buttonIcon} />
               <Text style={styles.authButtonText}>Sign in with Apple</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={styles.authButton} 
+              style={[styles.authButton, loading && styles.authButtonDisabled]} 
               activeOpacity={0.7}
               onPress={() => handleAuthLogin('Google')}
+              disabled={loading}
+              testID="google-button"
+              accessibilityState={{ disabled: loading }}
             >
               <FontAwesome5 name="google" size={18} color="#ffffff" style={styles.buttonIcon} />
               <Text style={styles.authButtonText}>Sign in with Google</Text>
@@ -96,6 +106,13 @@ export default function SignInScreen() {
           <Text style={styles.footerDot}>•</Text>
           <Text style={styles.termsText}>Privacy Policy</Text>
         </View>
+
+        {loading && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.loadingText}>Signing in...</Text>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -118,4 +135,13 @@ const styles = StyleSheet.create({
   footer: { position: 'absolute', bottom: 30, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
   termsText: { fontSize: 12, color: COLORS.textMuted, fontWeight: '500' },
   footerDot: { fontSize: 12, color: COLORS.textMuted, marginTop: -2 },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(11, 15, 25, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: { fontSize: 16, color: COLORS.text, fontWeight: '600' },
+  authButtonDisabled: { opacity: 0.5 },
 });
