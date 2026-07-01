@@ -10,6 +10,7 @@ jest.mock('@expo/vector-icons', () => ({
 }));
 
 let focusCallback: (() => void) | null = null;
+let mockSocket: any = null;
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: jest.fn() }),
@@ -19,7 +20,7 @@ jest.mock('expo-router', () => ({
 }));
 
 jest.mock('../../../src/context/SocketContext', () => ({
-  useSocket: () => ({ socket: null }),
+  useSocket: () => ({ socket: mockSocket }),
 }));
 
 jest.mock('../../../src/lib/auth-client', () => ({
@@ -43,6 +44,50 @@ const FIXTURE_BASE = {
   playerAReady: false,
   playerBReady: false,
 };
+
+describe('TournamentsScreen - Socket Lifecycle', () => {
+  let mockFetch: jest.Mock;
+
+  beforeEach(() => {
+    const mod = require('../../../src/lib/auth-client');
+    mockFetch = mod.authClient.$fetch;
+    mockFetch.mockReset();
+    focusCallback = null;
+
+    mockSocket = {
+      on: jest.fn(),
+      off: jest.fn(),
+    };
+  });
+
+  afterEach(() => {
+    focusCallback = null;
+    mockSocket = null;
+    jest.restoreAllMocks();
+  });
+
+  function setupMockResponses() {
+    mockFetch
+      .mockResolvedValueOnce({ data: { id: 'user1', serverTime: undefined }, error: null })
+      .mockResolvedValueOnce({ data: null, error: null });
+    mockFetch.mockResolvedValue({ data: null, error: null });
+  }
+
+  it('registers app_update listener on mount when socket is available', async () => {
+    setupMockResponses();
+    await render(<TournamentsScreen />);
+    expect(mockSocket.on).toHaveBeenCalledWith('app_update', expect.any(Function));
+  });
+
+  it('calls socket.off on unmount to prevent memory leaks', async () => {
+    setupMockResponses();
+    const view = await render(<TournamentsScreen />);
+    await act(async () => {
+      view.unmount();
+    });
+    expect(mockSocket.off).toHaveBeenCalledWith('app_update', expect.any(Function));
+  });
+});
 
 describe('TournamentsScreen - Server Time Offset', () => {
   let mockFetch: jest.Mock;

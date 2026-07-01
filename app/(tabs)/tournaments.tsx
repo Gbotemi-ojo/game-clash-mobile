@@ -52,25 +52,17 @@ export default function TournamentsScreen() {
 
   const { socket } = useSocket();
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(Date.now() + serverTimeOffsetRef.current);
-    }, 30000);
-    return () => clearInterval(interval);
+  const triggerEntranceAnimation = useCallback(() => {
+    const animations = fadeAnims.map((fadeAnim, index) => {
+      return Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.spring(slideAnims[index], { toValue: 0, friction: 8, tension: 40, useNativeDriver: true })
+      ]);
+    });
+    Animated.stagger(120, animations).start();
   }, []);
 
-  useEffect(() => {
-    if (!socket) return;
-    const handleAppUpdate = (data: any) => {
-      fetchDashboardData(true); 
-    };
-    socket.on('app_update', handleAppUpdate);
-    return () => {
-      socket.off('app_update', handleAppUpdate);
-    };
-  }, [socket]);
-
-  const fetchDashboardData = async (silent = false) => {
+  const fetchDashboardData = useCallback(async (silent = false) => {
     try {
       const [meRes, leagueRes] = await Promise.all([
         authClient.$fetch<any>(`${BACKEND_URL}/api/v1/users/me`),
@@ -118,27 +110,40 @@ export default function TournamentsScreen() {
         isFirstLoad.current = false;
       }
     }
-  };
+  }, [triggerEntranceAnimation]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now() + serverTimeOffsetRef.current);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchDashboardDataRef = useRef(fetchDashboardData);
+  useEffect(() => {
+    fetchDashboardDataRef.current = fetchDashboardData;
+  });
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleAppUpdate = (data: any) => {
+      fetchDashboardDataRef.current(true); 
+    };
+    socket.on('app_update', handleAppUpdate);
+    return () => {
+      socket.off('app_update', handleAppUpdate);
+    };
+  }, [socket]);
 
   useFocusEffect(
     useCallback(() => {
       fetchDashboardData();
-    }, [])
+    }, [fetchDashboardData])
   );
 
   const onRefresh = () => {
     setIsRefreshing(true);
     fetchDashboardData();
-  };
-
-  const triggerEntranceAnimation = () => {
-    const animations = fadeAnims.map((fadeAnim, index) => {
-      return Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
-        Animated.spring(slideAnims[index], { toValue: 0, friction: 8, tension: 40, useNativeDriver: true })
-      ]);
-    });
-    Animated.stagger(120, animations).start();
   };
 
   const animatePressIn = () => Animated.spring(actionBtnScale, { toValue: 0.95, useNativeDriver: true }).start();
