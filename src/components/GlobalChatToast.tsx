@@ -94,6 +94,7 @@ export default function GlobalChatToast() {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     
     const targetId = toast.senderId;
+    if (!targetId) return;
     
     setToast(null);
     slideAnim.setValue(-150); 
