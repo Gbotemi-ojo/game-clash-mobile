@@ -48,5 +48,37 @@ export const styles = StyleSheet.create({
   slideText: { color: '#d4d4d8', fontSize: 15, lineHeight: 24, textAlign: 'center', paddingHorizontal: 10 },
   paginationRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingBottom: 40 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#52525b' },
-  activeDot: { width: 20, backgroundColor: '#f59e0b' }
+  activeDot: { width: 20, backgroundColor: '#f59e0b' },
+  // Add these inside your existing StyleSheet.create({ ... })
+  statsGrid: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    gap: 12, 
+    justifyContent: 'space-between', 
+    marginTop: 16 
+  },
+  statSquare: { 
+    width: '47%', 
+    backgroundColor: '#1f1f25', 
+    borderWidth: 1, 
+    borderColor: '#333', 
+    borderRadius: 12, 
+    padding: 16, 
+    alignItems: 'center' 
+  },
+  statLabel: { 
+    color: '#71717a', 
+    fontSize: 11, 
+    fontWeight: 'bold', 
+    marginBottom: 8, 
+    textTransform: 'uppercase', 
+    letterSpacing: 1 
+  },
+  statValue: { 
+    color: '#fff', 
+    fontSize: 24, 
+    fontWeight: '900' 
+  },
 });
+
+

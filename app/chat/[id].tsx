@@ -1,213 +1,48 @@
 // app/chat/[id].tsx
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  TextInput, 
-  FlatList, 
-  KeyboardAvoidingView, 
-  Platform,
-  ActivityIndicator,
-  Keyboard,
-  Alert,
-  Modal
+  View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, 
+  KeyboardAvoidingView, Platform, ActivityIndicator, Keyboard, Alert, Modal
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { authClient, BACKEND_URL } from '../../src/lib/auth-client';
-import { useSocket } from '../../src/context/SocketContext';
-
-import { Swipeable, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Clipboard from 'expo-clipboard';
 import * as Notifications from 'expo-notifications';
 
+import { authClient, BACKEND_URL } from '../../src/lib/auth-client';
+import { useSocket } from '../../src/context/SocketContext';
 import { db } from '../../src/db/localDb';
 import { localMessages } from '../../src/db/localSchema';
 import { eq, and, ne, desc } from 'drizzle-orm';
 
-// ==========================================
-// 🚀 UTILITY FUNCTIONS 
-// ==========================================
-const safeParseDate = (dateInput: any) => {
-  if (!dateInput || dateInput === '{}' || dateInput === '[object Object]') return null;
-  let d = new Date(dateInput);
-  if (!isNaN(d.getTime())) return d;
-  if (typeof dateInput === 'string') {
-    d = new Date(dateInput.replace(' ', 'T') + (dateInput.includes('Z') ? '' : 'Z'));
-    if (!isNaN(d.getTime())) return d;
-    if (/^\d+$/.test(dateInput)) {
-      d = new Date(parseInt(dateInput, 10));
-      if (!isNaN(d.getTime())) return d;
-    }
-  }
-  return null;
-};
+// 👉 NEW IMPORTS
+import { sanitizeDateToISO } from '../../src/utils/chatHelpers';
+import { MessageItem } from '../../src/components/chat/MessageItem';
 
-const sanitizeDateToISO = (val: any) => {
-  const d = safeParseDate(val);
-  return d ? d.toISOString() : new Date().toISOString();
-};
-
-const formatTime = (dateInput: any) => {
-  const d = safeParseDate(dateInput);
-  if (!d) return ''; 
-  let hours = d.getHours();
-  const minutes = d.getMinutes();
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12;
-  hours = hours ? hours : 12; 
-  const minutesStr = minutes < 10 ? '0' + minutes : minutes;
-  return `${hours}:${minutesStr} ${ampm}`;
-};
-
-const formatDatePill = (dateInput: any) => {
-  const d = safeParseDate(dateInput);
-  if (!d) return ''; 
-  const today = new Date();
-  if (d.toDateString() === today.toDateString()) return 'Today';
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${months[d.getMonth()]} ${d.getDate()}`;
-};
-
-const getTick = (status: string) => {
-  if (status === 'sent') return '✓';
-  if (status === 'delivered') return '✓✓';
-  if (status === 'read') return '✓✓';
-  if (status === 'failed') return '❌';
-  return '🕒';
-};
-
-// ==========================================
-// 🚀 OPTIMIZED MESSAGE ITEM
-// ==========================================
-const MessageItem = React.memo(({ item, isLastItem, olderMessage, currentUserId, opponentName, repliedMessage, isHighlighted, onLongPress, onReply, onPressReplyBlock }: any) => {
-  const swipeableRef = useRef<Swipeable>(null);
-  const isMe = currentUserId && item.senderId === currentUserId;
-  
-  const currentDate = safeParseDate(item.createdAt);
-  const olderDate = olderMessage ? safeParseDate(olderMessage.createdAt) : null;
-  
-  let showDateSeparator = false;
-  if (isLastItem && currentDate) {
-     showDateSeparator = true;
-  } else if (currentDate && olderDate) {
-     showDateSeparator = currentDate.toDateString() !== olderDate.toDateString();
-  }
-
-  const timeString = formatTime(item.createdAt);
-
-  const renderLeftActions = () => (
-    <View style={styles.swipeReplyContainer}>
-      <View style={styles.swipeReplyCircle}>
-        <Ionicons name="arrow-undo" size={20} color="#fff" />
-      </View>
-    </View>
-  );
-
-  return (
-    <View>
-      {showDateSeparator && (
-        <View style={styles.datePillContainer}>
-          <Text style={styles.datePillText}>{formatDatePill(item.createdAt)}</Text>
-        </View>
-      )}
-      
-      <Swipeable 
-        ref={swipeableRef}
-        renderLeftActions={renderLeftActions}
-        overshootLeft={false}
-        onSwipeableOpen={() => {
-          onReply(item);
-          swipeableRef.current?.close(); 
-        }}
-      >
-        <TouchableOpacity 
-          activeOpacity={0.7} 
-          onLongPress={() => onLongPress(item)}
-          style={[styles.messageWrapper, isMe ? styles.messageWrapperMe : styles.messageWrapperThem]}
-        >
-          <View style={[
-            styles.messageBubble, 
-            isMe ? styles.messageBubbleMe : styles.messageBubbleThem,
-            isHighlighted && styles.messageBubbleHighlighted,
-            item.status === 'failed' && { opacity: 0.7 }
-          ]}>
-            
-            {item.replyToId && (
-              <TouchableOpacity 
-                activeOpacity={0.6}
-                onPress={() => onPressReplyBlock(item.replyToId)}
-                style={[styles.repliedMessageBlock, isMe ? styles.repliedMessageBlockMe : styles.repliedMessageBlockThem]}
-              >
-                <Text style={[styles.repliedMessageName, isMe ? { color: '#e0f2fe' } : { color: '#38bdf8' }]} numberOfLines={1}>
-                  {repliedMessage ? (repliedMessage.senderId === currentUserId ? 'You' : opponentName) : 'Original message'}
-                </Text>
-                <Text style={styles.repliedMessageText} numberOfLines={2}>
-                  {repliedMessage ? (repliedMessage.content || repliedMessage.text) : '...'}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            <Text style={styles.messageText}>{item.content || item.text}</Text>
-            
-            <View style={styles.messageMetaRow}>
-              {item.isEdited && (
-                <Text style={[styles.messageTime, { fontStyle: 'italic', marginRight: 4 }]}>Edited</Text>
-              )}
-              {timeString !== '' && <Text style={styles.messageTime}>{timeString}</Text>}
-              {isMe && <Text style={[
-                styles.tickText, 
-                item.status === 'read' && { color: '#38bdf8' },
-                item.status === 'failed' && { color: '#ef4444' }
-              ]}>{getTick(item.status)}</Text>}
-            </View>
-            
-          </View>
-        </TouchableOpacity>
-      </Swipeable>
-    </View>
-  );
-}, (prevProps, nextProps) => {
-  return (
-    prevProps.item.localId === nextProps.item.localId &&
-    prevProps.item.status === nextProps.item.status &&
-    prevProps.item.content === nextProps.item.content &&
-    prevProps.item.isEdited === nextProps.item.isEdited &&
-    prevProps.isHighlighted === nextProps.isHighlighted && 
-    prevProps.isLastItem === nextProps.isLastItem && 
-    prevProps.opponentName === nextProps.opponentName &&
-    prevProps.olderMessage?.localId === nextProps.olderMessage?.localId &&
-    prevProps.repliedMessage?.id === nextProps.repliedMessage?.id &&
-    prevProps.repliedMessage?.isEdited === nextProps.repliedMessage?.isEdited &&
-    prevProps.repliedMessage?.content === nextProps.repliedMessage?.content
-  );
-});
-
-
-// ==========================================
-// MAIN SCREEN
-// ==========================================
 export default function ChatScreen() {
-  const { id: targetUserId, name: paramName } = useLocalSearchParams();
+  const rawParams = useLocalSearchParams();
+  const targetUserId = Array.isArray(rawParams.id) ? rawParams.id[0] : rawParams.id;
+  const paramNameStr = Array.isArray(rawParams.name) ? rawParams.name[0] : rawParams.name;
+  const type = Array.isArray(rawParams.type) ? rawParams.type[0] : (rawParams.type || '1v1');
+  const paramRoomId = Array.isArray(rawParams.roomId) ? rawParams.roomId[0] : rawParams.roomId;
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const flatListRef = useRef<FlatList>(null);
   const { socket } = useSocket();
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [chatUser, setChatUser] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [roomId, setRoomId] = useState<number | null>(null);
-  
   const [messages, setMessages] = useState<any[]>([]);
   const [inputText, setInputText] = useState('');
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
-  
-  // 🔴 NEW STATE: Tracks if we should show the scroll-to-bottom button
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  
+  const [participantNames, setParticipantNames] = useState<Record<string, string>>({});
 
   const isSendingRef = useRef(false);
   const [isSending, setIsSending] = useState(false); 
@@ -245,6 +80,7 @@ export default function ChatScreen() {
     
     const showSubscription = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
     const hideSubscription = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+
     return () => {
       showSubscription.remove();
       hideSubscription.remove();
@@ -280,13 +116,28 @@ export default function ChatScreen() {
         const meRes = await authClient.$fetch<any>(`${BACKEND_URL}/api/v1/users/me`);
         if (meRes.data) setCurrentUser(meRes.data);
         
-        const targetRes = await authClient.$fetch<any>(`${BACKEND_URL}/api/v1/users/${targetUserId}/profile`);
-        if (targetRes.data) setChatUser(targetRes.data);
-        
-        const roomRes = await authClient.$fetch<any>(`${BACKEND_URL}/api/v1/chat/rooms/1v1`, { method: 'POST', body: { targetUserId } });
-        
-        if (roomRes.data && roomRes.data.roomId) {
-          const currentRoomId = roomRes.data.roomId;
+        let currentRoomId = paramRoomId ? parseInt(paramRoomId as string) : null;
+
+        if (type === '1v1') {
+          const targetRes = await authClient.$fetch<any>(`${BACKEND_URL}/api/v1/users/${targetUserId}/profile`);
+          if (targetRes.data) setChatUser(targetRes.data);
+          
+          if (!currentRoomId) {
+            const roomRes = await authClient.$fetch<any>(`${BACKEND_URL}/api/v1/chat/rooms/1v1`, { method: 'POST', body: { targetUserId } });
+            if (roomRes.data && roomRes.data.roomId) {
+              currentRoomId = roomRes.data.roomId;
+            }
+          }
+        } else {
+          if (!currentRoomId) {
+             const roomRes = await authClient.$fetch<any>(`${BACKEND_URL}/api/v1/chat/rooms/league/${targetUserId}`, { method: 'POST' });
+             if (roomRes.data && roomRes.data.roomId) {
+               currentRoomId = roomRes.data.roomId;
+             }
+          }
+        }
+
+        if (currentRoomId) {
           setRoomId(currentRoomId);
           await loadLocalMessages(currentRoomId);
           setIsLoading(false); 
@@ -294,8 +145,14 @@ export default function ChatScreen() {
           const historyRes = await authClient.$fetch<any[]>(`${BACKEND_URL}/api/v1/chat/rooms/${currentRoomId}/messages`);
           
           if (historyRes.data) {
+            const fetchedNames: Record<string, string> = {};
+
             await db.delete(localMessages).where(and(eq(localMessages.chatRoomId, currentRoomId), ne(localMessages.status, 'pending')));
             for (const msg of historyRes.data) {
+              if (msg.senderId && msg.senderName) {
+                fetchedNames[msg.senderId] = msg.senderName;
+              }
+
               const safeLocalId = msg.localId || `srv_${msg.id}`; 
               const safeIsoDate = sanitizeDateToISO(msg.createdAt); 
               await db.insert(localMessages).values({
@@ -307,20 +164,24 @@ export default function ChatScreen() {
                 set: { id: msg.id, status: msg.status, content: msg.content || msg.text, isEdited: msg.isEdited || false, replyToId: msg.replyToId || null, createdAt: safeIsoDate }
               });
             }
+            
+            setParticipantNames(prev => ({ ...prev, ...fetchedNames }));
             await loadLocalMessages(currentRoomId);
           }
+        } else {
+          setIsLoading(false);
         }
       } catch (err) {
         setIsLoading(false); 
       }
     };
     initializeChat();
-  }, [targetUserId]);
+  }, [targetUserId, type, paramRoomId]);
 
   useEffect(() => {
     if (!socket || !roomId || !currentUser || messages.length === 0) return;
-
     const unreadMessages = messages.filter(m => m.senderId !== currentUser.id && m.status !== 'read');
+    
     if (unreadMessages.length > 0) {
       const unreadIds = unreadMessages.map(m => m.id).filter(id => typeof id === 'number');
       if (unreadIds.length > 0) {
@@ -329,7 +190,6 @@ export default function ChatScreen() {
         });
         
         socket.emit('mark_read', { messageIds: unreadIds, senderId: unreadMessages[0].senderId });
-
         Notifications.setBadgeCountAsync(0).catch(() => {});
         Notifications.dismissAllNotificationsAsync().catch(() => {});
       }
@@ -344,10 +204,13 @@ export default function ChatScreen() {
 
     const handleNewMessage = async (msg: any) => {
       if ((msg.chatRoomId || msg.chat_room_id) !== roomId) return;
-
       const safeLocalId = msg.localId || `srv_${msg.id}`;
       const safeIsoDate = sanitizeDateToISO(msg.createdAt);
       
+      if (msg.senderId && msg.senderName) {
+        setParticipantNames(prev => ({...prev, [msg.senderId]: msg.senderName}));
+      }
+
       const newMsgObj = {
         localId: safeLocalId, id: msg.id, chatRoomId: roomId, senderId: msg.senderId,
         content: msg.content || msg.text, status: msg.status, replyToId: msg.replyToId || null,
@@ -422,6 +285,7 @@ export default function ChatScreen() {
     
     isSendingRef.current = true;
     setIsSending(true);
+
     const newMsgText = inputText.trim();
     setInputText('');
 
@@ -429,7 +293,7 @@ export default function ChatScreen() {
       const oldContent = editingMessage.content;
       
       setMessages(prev => prev.map(m => m.id === editingMessage.id ? { ...m, content: newMsgText, isEdited: true } : m));
-
+      
       try {
         await db.update(localMessages).set({ content: newMsgText, isEdited: true }).where(eq(localMessages.id, editingMessage.id));
         socket.emit('edit_message', { messageId: editingMessage.id, newContent: newMsgText, roomId });
@@ -437,7 +301,7 @@ export default function ChatScreen() {
         setMessages(prev => prev.map(m => m.id === editingMessage.id ? { ...m, content: oldContent, isEdited: editingMessage.isEdited } : m));
         Alert.alert("Error", "Could not edit message. Are you offline?");
       }
-
+      
       setEditingMessage(null);
       isSendingRef.current = false;
       setIsSending(false);
@@ -474,7 +338,7 @@ export default function ChatScreen() {
     } catch (error) {
       setMessages(prev => prev.map(m => m.localId === localId ? { ...m, status: 'failed' } : m));
     }
-
+    
     setReplyingTo(null); 
     setTimeout(() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }), 100);
     
@@ -512,10 +376,9 @@ export default function ChatScreen() {
     }
   }, []);
 
-  // 🔴 NEW UX FIX: Scroll tracking to show/hide the jump-to-bottom button
   const handleScroll = useCallback((event: any) => {
     const offsetY = event.nativeEvent.contentOffset.y;
-    setShowScrollToBottom(offsetY > 200); // Only shows if they scroll up more than 200 pixels
+    setShowScrollToBottom(offsetY > 200); 
   }, []);
 
   const scrollToBottom = () => {
@@ -531,14 +394,12 @@ export default function ChatScreen() {
 
   const handleDelete = async () => {
     if (!selectedMessage) return;
-
     if (!selectedMessage.id) {
       await db.delete(localMessages).where(eq(localMessages.localId, selectedMessage.localId));
       setMessages(prev => prev.filter(m => m.localId !== selectedMessage.localId));
       setOptionsModalVisible(false);
       return;
     }
-
     socket?.emit('delete_message', { messageId: selectedMessage.id, roomId });
     await db.delete(localMessages).where(eq(localMessages.localId, selectedMessage.localId));
     setMessages(prev => prev.filter(m => m.localId !== selectedMessage.localId));
@@ -551,6 +412,10 @@ export default function ChatScreen() {
     setOptionsModalVisible(false);
   };
 
+  const handleSenderPress = useCallback((senderId: string) => {
+    router.push({ pathname: '/player/[id]', params: { id: senderId } });
+  }, [router]);
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
@@ -558,9 +423,13 @@ export default function ChatScreen() {
       </SafeAreaView>
     );
   }
-
-  const paramNameStr = Array.isArray(paramName) ? paramName[0] : paramName;
-  const resolvedOpponentName = chatUser?.profile?.teamName || chatUser?.teamName || chatUser?.name || chatUser?.user?.name || paramNameStr || 'Opponent';
+  
+  let formattedHeaderName = paramNameStr || 'Opponent';
+  if (type === 'league_division') {
+    formattedHeaderName = paramNameStr?.replace('_', ' ').toUpperCase() || 'LEAGUE CHAT';
+  } else {
+    formattedHeaderName = chatUser?.profile?.teamName || chatUser?.teamName || chatUser?.name || chatUser?.user?.name || paramNameStr || 'Opponent';
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -575,23 +444,36 @@ export default function ChatScreen() {
                 <Ionicons name="chevron-back" size={26} color="#fff" />
               </TouchableOpacity>
               <View style={styles.avatarContainer}>
-                <FontAwesome5 name="user-astronaut" size={20} color="#38bdf8" />
+                <FontAwesome5 name={type === 'league_division' ? "users" : "user-astronaut"} size={20} color="#38bdf8" />
               </View>
-              <View style={styles.headerTextContainer}>
-                <Text style={styles.headerName}>{resolvedOpponentName}</Text>
+              
+              <TouchableOpacity 
+                style={styles.headerTextContainer}
+                activeOpacity={0.7}
+                onPress={() => {
+                  if (type === 'league_division') {
+                    router.push('/(tabs)/tournaments');
+                  } else {
+                    router.push({ pathname: '/player/[id]', params: { id: targetUserId } });
+                  }
+                }}
+              >
+                <Text style={styles.headerName}>{formattedHeaderName}</Text>
                 
-                {chatUser?.isOnline && (
+                {chatUser?.isOnline && type !== 'league_division' && (
                   <View style={styles.activeStatusRow}>
                     <View style={styles.activeDot} />
                     <Text style={styles.activeText}>Active now</Text>
                   </View>
                 )}
-                
-              </View>
+
+                {type === 'league_division' && (
+                  <Text style={styles.tapToViewText}>Tap to view ladder</Text>
+                )}
+              </TouchableOpacity>
             </View>
           </View>
 
-          {/* 🔴 WRAPPER: Helps isolate the FlatList so we can float the button over it */}
           <View style={{ flex: 1 }}>
             <FlatList
               ref={flatListRef}
@@ -602,8 +484,8 @@ export default function ChatScreen() {
               initialNumToRender={15}
               maxToRenderPerBatch={5}
               windowSize={5}
-              onScroll={handleScroll}       // 🔴 Added scroll tracker
-              scrollEventThrottle={16}      // 🔴 Fires scroll event at 60fps for smoothness
+              onScroll={handleScroll} 
+              scrollEventThrottle={16} 
               onScrollToIndexFailed={(info) => {
                 const wait = new Promise(resolve => setTimeout(resolve, 500));
                 wait.then(() => {
@@ -612,19 +494,21 @@ export default function ChatScreen() {
               }}
               renderItem={({ item, index }) => {
                 const repliedMessage = item.replyToId ? messageMap.get(item.replyToId) : null;
-
                 return (
                   <MessageItem 
                     item={item} 
                     isLastItem={index === messages.length - 1} 
                     olderMessage={index !== messages.length - 1 ? messages[index + 1] : null} 
                     currentUserId={currentUser?.id}
-                    opponentName={resolvedOpponentName} 
+                    opponentName={item.senderName || formattedHeaderName} 
                     repliedMessage={repliedMessage}
                     isHighlighted={item.id === highlightedMessageId} 
                     onLongPress={handleMessageLongPress}
                     onReply={handleMessageReply}
-                    onPressReplyBlock={handleScrollToMessage} 
+                    onPressReplyBlock={handleScrollToMessage}
+                    isGroup={type === 'league_division'}
+                    resolvedSenderName={participantNames[item.senderId] || item.senderName || 'Player'}
+                    onPressSender={handleSenderPress}
                   />
                 );
               }}
@@ -632,8 +516,6 @@ export default function ChatScreen() {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             />
-
-            {/* 🔴 THE FLOATING JUMP BUTTON */}
             {showScrollToBottom && (
               <TouchableOpacity 
                 style={styles.scrollToBottomBtn} 
@@ -651,7 +533,7 @@ export default function ChatScreen() {
                 <Text style={{ color: '#38bdf8', fontSize: 13, fontWeight: 'bold', marginBottom: 2 }}>
                   {editingMessage 
                     ? 'Editing Message' 
-                    : `Replying to ${replyingTo?.senderId === currentUser?.id ? 'yourself' : resolvedOpponentName}`
+                    : `Replying to ${replyingTo?.senderId === currentUser?.id ? 'yourself' : (participantNames[replyingTo?.senderId] || replyingTo?.senderName || formattedHeaderName)}`
                   }
                 </Text>
                 <Text style={{ color: '#a1a1aa', fontSize: 13 }} numberOfLines={1}>
@@ -668,6 +550,7 @@ export default function ChatScreen() {
             <TouchableOpacity style={styles.attachBtn}>
               <Ionicons name="add" size={28} color="#a1a1aa" />
             </TouchableOpacity>
+
             <View style={styles.inputWrapper}>
               <TextInput
                 style={styles.textInput}
@@ -683,6 +566,7 @@ export default function ChatScreen() {
                 }}
               />
             </View>
+
             {inputText.trim() ? (
               <TouchableOpacity 
                 style={[styles.sendBtn, isSending && { opacity: 0.7 }]} 
@@ -703,24 +587,29 @@ export default function ChatScreen() {
           <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setOptionsModalVisible(false)}>
             <View style={styles.bottomSheet}>
               <View style={styles.sheetHandle} />
+              
               <TouchableOpacity style={styles.sheetAction} onPress={() => { setReplyingTo(selectedMessage); setOptionsModalVisible(false); }}>
                 <Ionicons name="arrow-undo-outline" size={22} color="#fff" />
                 <Text style={styles.sheetActionText}>Reply</Text>
               </TouchableOpacity>
+              
               <TouchableOpacity style={styles.sheetAction} onPress={handleCopy}>
                 <Ionicons name="copy-outline" size={22} color="#fff" />
                 <Text style={styles.sheetActionText}>Copy text</Text>
               </TouchableOpacity>
+
               <TouchableOpacity style={styles.sheetAction} onPress={() => { Alert.alert('Forward', 'Select user to forward to.'); setOptionsModalVisible(false); }}>
                 <Ionicons name="arrow-redo-outline" size={22} color="#fff" />
                 <Text style={styles.sheetActionText}>Forward</Text>
               </TouchableOpacity>
+
               {selectedMessage?.senderId === currentUser?.id && (
                 <>
                   <TouchableOpacity style={styles.sheetAction} onPress={handleEditSelected}>
                     <Ionicons name="pencil-outline" size={22} color="#fff" />
                     <Text style={styles.sheetActionText}>Edit</Text>
                   </TouchableOpacity>
+                  
                   <TouchableOpacity style={[styles.sheetAction, { borderBottomWidth: 0 }]} onPress={handleDelete}>
                     <Ionicons name="trash-outline" size={22} color="#ef4444" />
                     <Text style={[styles.sheetActionText, { color: '#ef4444' }]}>Delete</Text>
@@ -743,48 +632,14 @@ const styles = StyleSheet.create({
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
   iconBtn: { padding: 6 },
   avatarContainer: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#1f1f25', borderWidth: 1, borderColor: '#38bdf8', justifyContent: 'center', alignItems: 'center', marginHorizontal: 8 },
-  headerTextContainer: { justifyContent: 'center' },
+  headerTextContainer: { justifyContent: 'center', paddingVertical: 4 },
   headerName: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   activeStatusRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
   activeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#10b981', marginRight: 4 },
   activeText: { color: '#10b981', fontSize: 12, fontWeight: '500' },
+  tapToViewText: { color: '#a1a1aa', fontSize: 11, marginTop: 2 },
   chatCanvas: { paddingHorizontal: 16, paddingVertical: 20 },
-  datePillContainer: { alignItems: 'center', marginBottom: 20, marginTop: 10 },
-  datePillText: { backgroundColor: '#1f1f25', color: '#a1a1aa', fontSize: 12, fontWeight: 'bold', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, overflow: 'hidden' },
-  
-  swipeReplyContainer: { justifyContent: 'center', alignItems: 'flex-start', width: 60, paddingLeft: 10, marginBottom: 16 },
-  swipeReplyCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#1f1f25', justifyContent: 'center', alignItems: 'center' },
-  messageWrapper: { marginBottom: 16, flexDirection: 'row' },
-  messageWrapperMe: { justifyContent: 'flex-end' },
-  messageWrapperThem: { justifyContent: 'flex-start' },
-  messageBubble: { maxWidth: '80%', paddingHorizontal: 14, paddingVertical: 10 },
-  messageBubbleMe: { backgroundColor: '#3b82f6', borderTopLeftRadius: 16, borderTopRightRadius: 16, borderBottomLeftRadius: 16, borderBottomRightRadius: 4 },
-  messageBubbleThem: { backgroundColor: '#27272a', borderTopLeftRadius: 16, borderTopRightRadius: 16, borderBottomLeftRadius: 4, borderBottomRightRadius: 16 },
-  
-  messageBubbleHighlighted: { 
-    borderWidth: 2, 
-    borderColor: '#22d3ee', 
-    shadowColor: '#22d3ee', 
-    shadowOffset: { width: 0, height: 0 }, 
-    shadowOpacity: 0.8, 
-    shadowRadius: 10, 
-    elevation: 5 
-  },
-
-  messageText: { color: '#fff', fontSize: 15, lineHeight: 22 },
-  messageMetaRow: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginTop: 4, gap: 4 },
-  messageTime: { color: 'rgba(255,255,255,0.6)', fontSize: 10 },
-  tickText: { color: 'rgba(255,255,255,0.6)', fontSize: 10 },
-
-  repliedMessageBlock: { padding: 8, borderRadius: 6, marginBottom: 6, borderLeftWidth: 3 },
-  repliedMessageBlockMe: { backgroundColor: 'rgba(255,255,255,0.15)', borderLeftColor: '#bae6fd' },
-  repliedMessageBlockThem: { backgroundColor: '#3f3f46', borderLeftColor: '#10b981' },
-  repliedMessageName: { fontSize: 12, fontWeight: 'bold', marginBottom: 2 },
-  repliedMessageText: { color: '#d4d4d8', fontSize: 12 },
-  
   replyPreviewBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#18181b', padding: 12, borderTopWidth: 1, borderTopColor: '#27272a' },
-  
-  // 🔴 THE BUTTON STYLE: Precisely floats above the bottom edge of the FlatList!
   scrollToBottomBtn: {
     position: 'absolute',
     bottom: 12,
@@ -804,14 +659,12 @@ const styles = StyleSheet.create({
     elevation: 5,
     zIndex: 10
   },
-
   footer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#18181b', paddingHorizontal: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#27272a', ...(Platform.OS === 'android' && { borderTopWidth: 0 }) },
   attachBtn: { padding: 4, marginRight: 8 },
   inputWrapper: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#222225', borderRadius: 24, paddingLeft: 16, paddingRight: 8, minHeight: 44, maxHeight: 100 },
   textInput: { flex: 1, color: '#fff', fontSize: 15, paddingTop: 10, paddingBottom: 10 },
   micBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#222225', justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#3b82f6', justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
-
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   bottomSheet: { backgroundColor: '#18181b', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 40 },
   sheetHandle: { width: 40, height: 5, borderRadius: 3, backgroundColor: '#3f3f46', alignSelf: 'center', marginBottom: 20 },

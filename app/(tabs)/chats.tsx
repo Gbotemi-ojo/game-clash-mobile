@@ -47,7 +47,6 @@ export default function ChatsListScreen() {
         for (const room of data) {
           const roomName = room.title || room.name || 'Opponent';
           
-          // 🛡️ Safely handle both string dates and objects parsed by better-fetch
           let validBackendDate: string | null = null;
           if (room.lastMessageAt) {
             if (typeof room.lastMessageAt === 'string' && room.lastMessageAt.length > 5 && room.lastMessageAt !== '[object Object]' && room.lastMessageAt !== '{}') {
@@ -86,7 +85,6 @@ export default function ChatsListScreen() {
             }
           });
         }
-
         // 3. RE-QUERY FOR SEAMLESS UI UPDATE
         const freshLocalData = await db.select().from(localChatRooms).orderBy(desc(localChatRooms.updatedAt));
         setChatRooms(freshLocalData);
@@ -124,10 +122,8 @@ export default function ChatsListScreen() {
     (room.lastMessage || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // 🔴 THE FIX: Vanilla JS Date Parser (Hermes-Proof)
   const formatTime = (dateInput?: string | number | Date | null) => {
-    if (!dateInput || dateInput === '{}' || dateInput === '[object Object]') return ''; 
-    
+    if (!dateInput || dateInput === '{}' || dateInput === '[object Object]') return '';      
     let d = new Date(dateInput);
     
     if (isNaN(d.getTime()) && typeof dateInput === 'string') {
@@ -136,14 +132,12 @@ export default function ChatsListScreen() {
     if (isNaN(d.getTime()) && typeof dateInput === 'string' && /^\d+$/.test(dateInput)) {
       d = new Date(parseInt(dateInput, 10));
     }
-
     if (isNaN(d.getTime())) return '';
 
     const today = new Date();
     const isToday = d.toDateString() === today.toDateString();
 
     if (isToday) {
-      // Manually construct the time to bypass Android Hermes crashes
       let hours = d.getHours();
       const minutes = d.getMinutes();
       const ampm = hours >= 12 ? 'PM' : 'AM';
@@ -152,7 +146,6 @@ export default function ChatsListScreen() {
       const minutesStr = minutes < 10 ? '0' + minutes : minutes;
       return `${hours}:${minutesStr} ${ampm}`;
     } else {
-      // Manually construct the date (e.g., "May 28")
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       return `${months[d.getMonth()]} ${d.getDate()}`;
     }
@@ -166,12 +159,21 @@ export default function ChatsListScreen() {
       <TouchableOpacity 
         style={styles.chatRow}
         activeOpacity={0.7}
-        onPress={() => router.push({ pathname: '/chat/[id]', params: { id: item.targetUserId } })}
+        onPress={() => {
+          router.push({ 
+            pathname: '/chat/[id]', 
+            params: { 
+              id: item.type === 'league_division' ? item.id : item.targetUserId,
+              type: item.type || '1v1',
+              roomId: item.id,
+              name: item.name || item.title || 'League Chat'
+            } 
+          })
+        }}
       >
         <View style={styles.avatar}>
           <FontAwesome5 name="user-astronaut" size={20} color="#38bdf8" />
         </View>
-
         <View style={styles.chatInfo}>
           <View style={styles.chatHeader}>
             <Text style={styles.chatName} numberOfLines={1}>{item.name || item.title || 'Opponent'}</Text>

@@ -1,25 +1,14 @@
+// app/(tabs)/profile.tsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  ScrollView, 
-  TextInput, 
-  Animated, 
-  Alert, 
-  ActivityIndicator, 
-  Modal, 
-  Image, 
-  Dimensions,
-  NativeSyntheticEvent,
-  NativeScrollEvent
+  View, Text, TouchableOpacity, ScrollView, TextInput, 
+  Animated, Alert, ActivityIndicator, Modal, Image, 
+  Dimensions, NativeSyntheticEvent, NativeScrollEvent 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { authClient, BACKEND_URL } from '../../src/lib/auth-client';
-
-// ✅ Import Styles
 import { styles } from '../../src/styles/profile.styles';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -29,17 +18,16 @@ export default function ProfileScreen() {
   const [userProfile, setUserProfile] = useState<any>(null);
   
   const [dlsInput, setDlsInput] = useState('');
-  const [gamerTagInput, setGamerTagInput] = useState('');
+  const [teamNameInput, setTeamNameInput] = useState('');
   
   const [isVerifying, setIsVerifying] = useState(false);
-  const [isUpdatingTag, setIsUpdatingTag] = useState(false);
-  
+  const [isUpdatingName, setIsUpdatingName] = useState(false);
   const [isGuideVisible, setIsGuideVisible] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
 
-  const fadeAnims = useRef([...Array(4)].map(() => new Animated.Value(0))).current;
-  const slideAnims = useRef([...Array(4)].map(() => new Animated.Value(30))).current;
-  
+  // Increased to 5 to account for the new Stats card
+  const fadeAnims = useRef([...Array(5)].map(() => new Animated.Value(0))).current;
+  const slideAnims = useRef([...Array(5)].map(() => new Animated.Value(30))).current;
   const verifyBtnScale = useRef(new Animated.Value(1)).current;
   const updateBtnScale = useRef(new Animated.Value(1)).current;
 
@@ -48,8 +36,8 @@ export default function ProfileScreen() {
       const { data, error } = await authClient.$fetch<any>(`${BACKEND_URL}/api/v1/users/me`);
       if (!error && data) {
         setUserProfile(data);
-        if (data.profile?.gamerTag) {
-          setGamerTagInput(data.profile.gamerTag);
+        if (data.profile?.teamName) {
+          setTeamNameInput(data.profile.teamName);
         }
       }
     } catch (err) {
@@ -71,11 +59,9 @@ export default function ProfileScreen() {
           try {
             const { data, error } = await authClient.$fetch<any>(`${BACKEND_URL}/api/v1/users/me`);
             if (!error && data) {
-              setUserProfile(data); 
+              setUserProfile(data);
             }
-          } catch (e) {
-            // Ignore background errors
-          }
+          } catch (e) {}
         };
         silentRefresh();
       }
@@ -97,13 +83,12 @@ export default function ProfileScreen() {
 
   const handleVerifyId = async () => {
     if (dlsInput.length !== 8) {
-      Alert.alert("Invalid ID", "Your Dream League Soccer ID must be exactly 8 characters.");
+      Alert.alert("Invalid ID", "Your Game ID must be exactly 8 characters.");
       return;
     }
-
     setIsVerifying(true);
     try {
-      const { data, error } = await authClient.$fetch<any>(`${BACKEND_URL}/api/v1/users/me/verify-dls`, {
+      const { error } = await authClient.$fetch<any>(`${BACKEND_URL}/api/v1/users/me/verify-dls`, {
         method: 'POST',
         body: { dlsPlayerId: dlsInput }
       });
@@ -112,7 +97,7 @@ export default function ProfileScreen() {
         const backendMessage = (error as any).error || error.message || 'Verification failed';
         throw new Error(backendMessage);
       }
-
+      
       Alert.alert("Success!", "Game ID linked and stats imported successfully.");
       fetchProfileData(); 
     } catch (err: any) {
@@ -122,30 +107,30 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleUpdateTag = async () => {
-    if (gamerTagInput.trim().length < 3) {
-      Alert.alert("Invalid Tag", "Gamer Tag must be at least 3 characters.");
+  const handleUpdateTeamName = async () => {
+    if (teamNameInput.trim().length < 3) {
+      Alert.alert("Invalid Name", "Team Name must be at least 3 characters.");
       return;
     }
-
-    setIsUpdatingTag(true);
+    setIsUpdatingName(true);
     try {
-      const { data, error } = await authClient.$fetch<any>(`${BACKEND_URL}/api/v1/users/me/profile`, {
+      // NOTE: Ensure your backend update profile schema accepts 'teamName'
+      const { error } = await authClient.$fetch<any>(`${BACKEND_URL}/api/v1/users/me/profile`, {
         method: 'PATCH',
-        body: { gamerTag: gamerTagInput.trim() }
+        body: { teamName: teamNameInput.trim() }
       });
 
       if (error) {
         const backendMessage = (error as any).error || error.message || 'Update failed';
         throw new Error(backendMessage);
       }
-
-      Alert.alert("Tag Updated", "Your Gamer Tag has been successfully changed.");
+      
+      Alert.alert("Team Name Updated", "Your Team Name has been successfully changed.");
       fetchProfileData();
     } catch (err: any) {
       Alert.alert("Update Failed", err.message);
     } finally {
-      setIsUpdatingTag(false);
+      setIsUpdatingName(false);
     }
   };
 
@@ -155,7 +140,7 @@ export default function ProfileScreen() {
   };
 
   const guideSteps = [
-    { image: require('../../assets/images/dls1.jpg'), text: "1. From the DLS home screen, tap the Settings (gear) icon in the top left corner." },
+    { image: require('../../assets/images/dls1.jpg'), text: "1. From the home screen, tap the Settings (gear) icon in the top left corner." },
     { image: require('../../assets/images/dls2.jpg'), text: "2. Navigate to Advanced Settings and tap 'System Info'." },
     { image: require('../../assets/images/dls3.jpg'), text: "3. Your Game ID is the unique 8-character code shown. Enter it exactly." }
   ];
@@ -175,28 +160,27 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
+        {/* HEADER */}
         <Animated.View style={[styles.headerSection, { opacity: fadeAnims[0], transform: [{ translateY: slideAnims[0] }] }]}>
           <View style={styles.headerTop}>
             <Text style={styles.pageTitle}>PLAYER PROFILE</Text>
-            
             <View style={styles.ticketPill}>
               <FontAwesome5 name="ticket-alt" size={14} color="#f59e0b" />
               <Text style={styles.ticketText}>{userProfile?.wallet?.tickets ?? 0}</Text>
             </View>
-
           </View>
-          
           <View style={styles.userInfoRow}>
             <View style={styles.avatarCircle}>
               <FontAwesome5 name="user-astronaut" size={32} color="#22d3ee" />
             </View>
             <View style={styles.userInfoText}>
-              <Text style={styles.userName}>{userProfile?.name || 'Contender'}</Text>
+              <Text style={styles.userName}>{profileData.teamName || userProfile?.name || 'Contender'}</Text>
               <Text style={styles.userEmail}>{userProfile?.email || ''}</Text>
             </View>
           </View>
         </Animated.View>
 
+        {/* VERIFICATION CARD */}
         <Animated.View style={[styles.card, { opacity: fadeAnims[1], transform: [{ translateY: slideAnims[1] }] }]}>
           {!profileData.dlsPlayerId ? (
             <>
@@ -204,7 +188,7 @@ export default function ProfileScreen() {
                 <Ionicons name="shield-checkmark-outline" size={20} color="#a1a1aa" />
                 <Text style={styles.cardTitle}>Account Verification</Text>
               </View>
-              <Text style={styles.cardDesc}>Link your unique 8-character game ID to unlock tournament entry.</Text>
+              <Text style={styles.cardDesc}>Link your unique 8-character game ID to import your stats.</Text>
               
               <TextInput 
                 style={styles.input}
@@ -243,43 +227,75 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.verifiedBox}>
                 <Text style={styles.teamName}>{profileData.teamName || profileData.dlsPlayerId}</Text>
-                <Text style={styles.verifiedSub}>Your account is linked and ready for matchmaking.</Text>
+                <Text style={styles.verifiedSub}>Your account is successfully linked to the arena.</Text>
               </View>
             </>
           )}
         </Animated.View>
 
-        <Animated.View style={[styles.card, { opacity: fadeAnims[2], transform: [{ translateY: slideAnims[2] }] }]}>
-          <View style={styles.cardHeaderRow}>
-            <Ionicons name="id-card-outline" size={20} color="#a1a1aa" />
-            <Text style={styles.cardTitle}>Customize Identity</Text>
-          </View>
-          <Text style={styles.cardDesc}>Update your public Gamer Tag seen on leaderboards.</Text>
-          
-          <TextInput 
-            style={styles.input}
-            placeholder="Gamer Tag"
-            placeholderTextColor="#666"
-            value={gamerTagInput}
-            onChangeText={setGamerTagInput}
-            editable={!isUpdatingTag}
-          />
-
-          <Animated.View style={{ transform: [{ scale: updateBtnScale }] }}>
-            <TouchableOpacity 
-              style={[styles.primaryButton, { backgroundColor: '#3b82f6' }]}
-              activeOpacity={0.9}
-              onPressIn={() => animatePressIn(updateBtnScale)}
-              onPressOut={() => animatePressOut(updateBtnScale)}
-              onPress={handleUpdateTag}
-              disabled={isUpdatingTag}
-            >
-              {isUpdatingTag ? <ActivityIndicator color="#fff" /> : <Text style={[styles.primaryButtonText, { color: '#fff' }]}>Update Tag</Text>}
-            </TouchableOpacity>
+        {/* CAREER STATISTICS CARD (NEW) */}
+        {profileData.dlsPlayerId && (
+          <Animated.View style={[styles.card, { opacity: fadeAnims[2], transform: [{ translateY: slideAnims[2] }] }]}>
+            <View style={styles.cardHeaderRow}>
+              <Ionicons name="stats-chart" size={20} color="#38bdf8" />
+              <Text style={styles.cardTitle}>Career Statistics</Text>
+            </View>
+            <View style={styles.statsGrid}>
+              <View style={styles.statSquare}>
+                <Text style={styles.statLabel}>PLAYED</Text>
+                <Text style={[styles.statValue, { color: '#fff' }]}>{profileData.matchesPlayed || 0}</Text>
+              </View>
+              <View style={styles.statSquare}>
+                <Text style={styles.statLabel}>WON</Text>
+                <Text style={[styles.statValue, { color: '#10b981' }]}>{profileData.matchesWon || 0}</Text>
+              </View>
+              <View style={styles.statSquare}>
+                <Text style={styles.statLabel}>LOST</Text>
+                <Text style={[styles.statValue, { color: '#ef4444' }]}>{profileData.matchesLost || 0}</Text>
+              </View>
+              <View style={styles.statSquare}>
+                <Text style={styles.statLabel}>WIN %</Text>
+                <Text style={[styles.statValue, { color: '#f59e0b' }]}>{profileData.winPercent || '0%'}</Text>
+              </View>
+            </View>
           </Animated.View>
-        </Animated.View>
+        )}
 
-        <Animated.View style={[styles.card, { opacity: fadeAnims[3], transform: [{ translateY: slideAnims[3] }] }]}>
+        {/* TEAM NAME CUSTOMIZATION */}
+        {profileData.dlsPlayerId && (
+          <Animated.View style={[styles.card, { opacity: fadeAnims[3], transform: [{ translateY: slideAnims[3] }] }]}>
+            <View style={styles.cardHeaderRow}>
+              <Ionicons name="id-card-outline" size={20} color="#a1a1aa" />
+              <Text style={styles.cardTitle}>Customize Identity</Text>
+            </View>
+            <Text style={styles.cardDesc}>Update your Team Name seen on leaderboards and brackets.</Text>
+            
+            <TextInput 
+              style={styles.input}
+              placeholder="Team Name"
+              placeholderTextColor="#666"
+              value={teamNameInput}
+              onChangeText={setTeamNameInput}
+              editable={!isUpdatingName}
+            />
+
+            <Animated.View style={{ transform: [{ scale: updateBtnScale }] }}>
+              <TouchableOpacity 
+                style={[styles.primaryButton, { backgroundColor: '#3b82f6' }]}
+                activeOpacity={0.9}
+                onPressIn={() => animatePressIn(updateBtnScale)}
+                onPressOut={() => animatePressOut(updateBtnScale)}
+                onPress={handleUpdateTeamName}
+                disabled={isUpdatingName}
+              >
+                {isUpdatingName ? <ActivityIndicator color="#fff" /> : <Text style={[styles.primaryButtonText, { color: '#fff' }]}>Update Name</Text>}
+              </TouchableOpacity>
+            </Animated.View>
+          </Animated.View>
+        )}
+
+        {/* TROPHY CABINET */}
+        <Animated.View style={[styles.card, { opacity: fadeAnims[4], transform: [{ translateY: slideAnims[4] }] }]}>
           <View style={styles.cardHeaderRow}>
             <Ionicons name="trophy-outline" size={20} color="#f59e0b" />
             <Text style={styles.cardTitle}>Trophy Cabinet</Text>
@@ -303,6 +319,7 @@ export default function ProfileScreen() {
         <View style={{ height: 40 }} />
       </ScrollView>
 
+      {/* INSTRUCTION MODAL */}
       <Modal visible={isGuideVisible} transparent animationType="fade" onRequestClose={() => setIsGuideVisible(false)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalHeader}>

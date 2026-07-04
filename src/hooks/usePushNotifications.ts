@@ -1,3 +1,4 @@
+// src/hooks/usePushNotifications.ts
 import { useState, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import * as Device from 'expo-device';
@@ -19,13 +20,12 @@ Notifications.setNotificationHandler({
 export function usePushNotifications() {
   const [expoPushToken, setExpoPushToken] = useState<string | undefined>();
   const { session } = useAuth();
-
   const hasAttemptedSend = useRef(false);
 
   useEffect(() => {
     registerForPushNotificationsAsync().then(token => {
       if (token) {
-        console.log("✅ EXPO PUSH TOKEN GENERATED: ", token);
+        console.log("EXPO PUSH TOKEN GENERATED: ", token);
         setExpoPushToken(token);
       }
     });
@@ -33,16 +33,14 @@ export function usePushNotifications() {
 
   useEffect(() => {
     if (!expoPushToken || !session?.user?.id || hasAttemptedSend.current) return;
-
     hasAttemptedSend.current = true;
 
     const sendTokenToBackend = async () => {
       try {
         console.log(`[PUSH] Sending token to backend...`);
         const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.43.131:5000';
-
+        
         let token = session?.session?.token;
-
         if (!token) {
           await new Promise(resolve => setTimeout(resolve, 500));
           token = await SecureStore.getItemAsync("better-auth.session_token");
@@ -74,8 +72,7 @@ export function usePushNotifications() {
           throw new Error(`Status ${res.status}: ${errorText}`);
         }
 
-        console.log("[PUSH] Token saved to DB successfully! 🎉");
-
+        console.log("[PUSH] Token saved to DB successfully!");
       } catch (err: any) {
         console.error("[PUSH] Failed to save token:", err.message);
         hasAttemptedSend.current = false;
@@ -103,19 +100,27 @@ async function registerForPushNotificationsAsync() {
   if (Device.isDevice) {
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
-
+    
     if (existingStatus !== 'granted') {
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
     }
-
+    
     if (finalStatus !== 'granted') {
       console.log('Permission not granted to get push token!');
-      return;
+      return undefined;
     }
 
     const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-    token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+    
+    // 👉 Wrap the Expo token generation request in a try/catch
+    try {
+      token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+    } catch (error) {
+      console.log('⚠️ Could not fetch Expo Push Token (Network/Emulator limitation). Skipping push registration.');
+      return undefined;
+    }
+
   } else {
     console.log('Must use physical device for Push Notifications');
   }
