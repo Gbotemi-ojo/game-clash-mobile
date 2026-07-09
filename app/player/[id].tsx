@@ -11,9 +11,9 @@ import { authClient, BACKEND_URL } from '../../src/lib/auth-client';
 export default function PlayerProfileScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-
   const [isLoading, setIsLoading] = useState(true);
   const [playerData, setPlayerData] = useState<any>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [errorState, setErrorState] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -22,14 +22,19 @@ export default function PlayerProfileScreen() {
   useEffect(() => {
     const fetchPlayerData = async () => {
       try {
-        const { data, error } = await authClient.$fetch<any>(`${BACKEND_URL}/api/v1/users/${id}/profile`);
-        // DEBUG: Uncomment the line below to inspect the structure in your terminal
-        // console.log("Player Data Received:", data);
-        
-        if (error || !data) {
+        const [profileRes, meRes] = await Promise.all([
+          authClient.$fetch<any>(`${BACKEND_URL}/api/v1/users/${id}/profile`),
+          authClient.$fetch<any>(`${BACKEND_URL}/api/v1/users/me`)
+        ]);
+
+        if (meRes.data) {
+          setCurrentUserId(meRes.data.id);
+        }
+
+        if (profileRes.error || !profileRes.data) {
           setErrorState(true);
         } else {
-          setPlayerData(data);
+          setPlayerData(profileRes.data);
         }
       } catch (err) {
         setErrorState(true);
@@ -77,7 +82,6 @@ export default function PlayerProfileScreen() {
     );
   }
 
-  // Handle nested vs flat data structure
   const pData = playerData.profile || playerData || {};
   const lStats = playerData.leagueStats || {};
   const badges = playerData.badges || [];
@@ -160,15 +164,20 @@ export default function PlayerProfileScreen() {
               </ScrollView>
             )}
           </View>
+
         </Animated.View>
       </ScrollView>
 
-      <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.messageBtn} activeOpacity={0.8} onPress={handleDirectMessage}>
-          <Ionicons name="chatbubbles" size={22} color="#fff" />
-          <Text style={styles.messageBtnText}>DIRECT MESSAGE</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Hide the message button if looking at your own profile */}
+      {currentUserId && currentUserId !== id && (
+        <View style={styles.bottomBar}>
+          <TouchableOpacity style={styles.messageBtn} activeOpacity={0.8} onPress={handleDirectMessage}>
+            <Ionicons name="chatbubbles" size={22} color="#fff" />
+            <Text style={styles.messageBtnText}>DIRECT MESSAGE</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
     </SafeAreaView>
   );
 }
@@ -210,5 +219,5 @@ const styles = StyleSheet.create({
   goBackText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(15, 15, 19, 0.95)', paddingHorizontal: 20, paddingVertical: 20, borderTopWidth: 1, borderTopColor: '#27272a' },
   messageBtn: { flexDirection: 'row', backgroundColor: '#3b82f6', paddingVertical: 18, borderRadius: 12, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  messageBtnText: { color: '#fff', fontSize: 16, fontWeight: '900', letterSpacing: 1 },
+  messageBtnText: { color: '#fff', fontSize: 16, fontWeight: '900', letterSpacing: 1 }
 });

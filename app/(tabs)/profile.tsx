@@ -7,13 +7,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { authClient, BACKEND_URL } from '../../src/lib/auth-client';
 import { styles } from '../../src/styles/profile.styles';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
   
@@ -25,9 +26,9 @@ export default function ProfileScreen() {
   const [isGuideVisible, setIsGuideVisible] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
 
-  // Increased to 5 to account for the new Stats card
-  const fadeAnims = useRef([...Array(5)].map(() => new Animated.Value(0))).current;
-  const slideAnims = useRef([...Array(5)].map(() => new Animated.Value(30))).current;
+  // Increased to 6 to account for the new Wallet & Payout card
+  const fadeAnims = useRef([...Array(6)].map(() => new Animated.Value(0))).current;
+  const slideAnims = useRef([...Array(6)].map(() => new Animated.Value(30))).current;
   const verifyBtnScale = useRef(new Animated.Value(1)).current;
   const updateBtnScale = useRef(new Animated.Value(1)).current;
 
@@ -114,7 +115,6 @@ export default function ProfileScreen() {
     }
     setIsUpdatingName(true);
     try {
-      // NOTE: Ensure your backend update profile schema accepts 'teamName'
       const { error } = await authClient.$fetch<any>(`${BACKEND_URL}/api/v1/users/me/profile`, {
         method: 'PATCH',
         body: { teamName: teamNameInput.trim() }
@@ -180,6 +180,26 @@ export default function ProfileScreen() {
           </View>
         </Animated.View>
 
+        {/* WALLET & PAYOUTS CARD (NEW) */}
+        <Animated.View style={[styles.card, { opacity: fadeAnims[5], transform: [{ translateY: slideAnims[5] }] }]}>
+          <TouchableOpacity 
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+            onPress={() => router.push('/withdrawal')}
+            activeOpacity={0.7}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(59, 130, 246, 0.1)', justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="wallet" size={20} color="#3b82f6" />
+              </View>
+              <View>
+                <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>Wallet & Payouts</Text>
+                <Text style={{ color: '#a1a1aa', fontSize: 13, marginTop: 2 }}>Withdraw your tournament winnings</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#71717a" />
+          </TouchableOpacity>
+        </Animated.View>
+
         {/* VERIFICATION CARD */}
         <Animated.View style={[styles.card, { opacity: fadeAnims[1], transform: [{ translateY: slideAnims[1] }] }]}>
           {!profileData.dlsPlayerId ? (
@@ -233,7 +253,7 @@ export default function ProfileScreen() {
           )}
         </Animated.View>
 
-        {/* CAREER STATISTICS CARD (NEW) */}
+        {/* CAREER STATISTICS CARD */}
         {profileData.dlsPlayerId && (
           <Animated.View style={[styles.card, { opacity: fadeAnims[2], transform: [{ translateY: slideAnims[2] }] }]}>
             <View style={styles.cardHeaderRow}>

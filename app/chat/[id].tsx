@@ -110,11 +110,20 @@ export default function ChatScreen() {
     }
   };
 
-  useEffect(() => {
+useEffect(() => {
     const initializeChat = async () => {
       try {
         const meRes = await authClient.$fetch<any>(`${BACKEND_URL}/api/v1/users/me`);
-        if (meRes.data) setCurrentUser(meRes.data);
+        if (meRes.data) {
+          setCurrentUser(meRes.data);
+          
+          // Safety fallback: Bounce the user if they try to message themselves
+          if (type === '1v1' && targetUserId === meRes.data.id) {
+            Alert.alert("Action Denied", "You cannot message yourself.");
+            router.back();
+            return;
+          }
+        }
         
         let currentRoomId = paramRoomId ? parseInt(paramRoomId as string) : null;
 
@@ -140,21 +149,21 @@ export default function ChatScreen() {
         if (currentRoomId) {
           setRoomId(currentRoomId);
           await loadLocalMessages(currentRoomId);
-          setIsLoading(false); 
+          setIsLoading(false);
 
           const historyRes = await authClient.$fetch<any[]>(`${BACKEND_URL}/api/v1/chat/rooms/${currentRoomId}/messages`);
           
           if (historyRes.data) {
             const fetchedNames: Record<string, string> = {};
-
             await db.delete(localMessages).where(and(eq(localMessages.chatRoomId, currentRoomId), ne(localMessages.status, 'pending')));
+
             for (const msg of historyRes.data) {
               if (msg.senderId && msg.senderName) {
                 fetchedNames[msg.senderId] = msg.senderName;
               }
-
               const safeLocalId = msg.localId || `srv_${msg.id}`; 
               const safeIsoDate = sanitizeDateToISO(msg.createdAt); 
+
               await db.insert(localMessages).values({
                 localId: safeLocalId, id: msg.id, chatRoomId: currentRoomId, senderId: msg.senderId,
                 content: msg.content || msg.text, status: msg.status, isEdited: msg.isEdited || false, 
@@ -175,6 +184,7 @@ export default function ChatScreen() {
         setIsLoading(false); 
       }
     };
+
     initializeChat();
   }, [targetUserId, type, paramRoomId]);
 

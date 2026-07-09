@@ -12,7 +12,25 @@ function AppContent() {
 
   return (
     <SocketProvider>
-      <Stack screenOptions={{ headerShown: false }} /> 
+      <Stack screenOptions={{ headerShown: false }}>
+        {/* Existing Tab and Auth Stacks */}
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(auth)" />
+        
+        {/* Full-Screen Pushes */}
+        <Stack.Screen name="withdrawal" />
+        <Stack.Screen name="leagues" />
+        <Stack.Screen name="create-tournament" />
+        
+        {/* Modal Overlay for Tiers - Shared across tabs */}
+        <Stack.Screen 
+          name="tiers" 
+          options={{ 
+            presentation: 'modal', 
+            animation: 'slide_from_bottom' 
+          }} 
+        />
+      </Stack>
       <GlobalChatToast />
     </SocketProvider>
   );

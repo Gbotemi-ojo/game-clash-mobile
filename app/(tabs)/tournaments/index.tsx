@@ -12,21 +12,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-// ✅ Added useRouter here
 import { useFocusEffect, useRouter } from 'expo-router';
 
 // ✅ Logic & Context Imports
-import { useSocket } from '../../src/context/SocketContext';
-import { authClient, BACKEND_URL } from '../../src/lib/auth-client';
+import { useSocket } from '../../../src/context/SocketContext';
+import { authClient, BACKEND_URL } from '../../../src/lib/auth-client';
 
 // ✅ Style Import
-import { styles } from '../../src/styles/tournaments.styles';
+import { styles } from '../../../src/styles/tournaments.styles';
 
 const HOURS_LIST = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
 const MINUTES_LIST = Array.from({ length: 12 }, (_, i) => (i * 5).toString().padStart(2, '0')); 
 
 export default function TournamentsScreen() {
-  // ✅ Initialize the router
   const router = useRouter();
 
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -221,7 +219,7 @@ export default function TournamentsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <ScrollView 
         contentContainerStyle={styles.scrollContent} 
         showsVerticalScrollIndicator={false}
@@ -419,9 +417,16 @@ export default function TournamentsScreen() {
 
         {(leagueStatus === 'active' || leagueStatus === 'pre_registration' || leagueStatus === 'completed') && (
           <Animated.View style={[styles.ladderContainer, { opacity: fadeAnims[2], transform: [{ translateY: slideAnims[2] }] }]}>
-            <View style={styles.cardHeaderRowPad}>
-              <Ionicons name="list-outline" size={20} color="#10b981" />
-              <Text style={styles.cardTitle}>League Table</Text>
+            
+            {/* ✅ NEW: Modified Header to include the Tiers modal link */}
+            <View style={[styles.cardHeaderRowPad, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="list-outline" size={20} color="#10b981" />
+                <Text style={styles.cardTitle}>League Table</Text>
+              </View>
+              <TouchableOpacity onPress={() => router.push('/tiers')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="information-circle-outline" size={24} color="#a1a1aa" />
+              </TouchableOpacity>
             </View>
 
             <View style={styles.tableWrapper}>
@@ -434,7 +439,6 @@ export default function TournamentsScreen() {
                 {leagueData.ladder?.map((row: any, idx: number) => {
                   const isMe = row.userId === myUserId;
                   return (
-                    // ✅ THIS IS THE CHANGED SECTION! Wrapped in TouchableOpacity with router.push
                     <TouchableOpacity 
                       key={`left-${idx}`} 
                       style={[styles.tableDataRow, isMe && styles.highlightRow]}
