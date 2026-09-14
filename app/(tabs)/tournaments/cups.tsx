@@ -32,10 +32,10 @@ export default function CupsScreen() {
     }, [])
   );
 
-  const renderCup = ({ item }: { item: any }) => (
+const renderCup = ({ item }: { item: any }) => (
     <TouchableOpacity 
       style={styles.cupCard}
-      onPress={() => router.push(`/tiers?tournamentId=${item.id}`)}
+      onPress={() => router.push({ pathname: '/tournament/[id]', params: { id: item.id } } as any)}
     >
       <View style={styles.cardHeader}>
         <Ionicons name="trophy" size={24} color="#facc15" />

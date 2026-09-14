@@ -1,9 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-// ✅ ADDED: AdEventType is now imported here!
-import { RewardedAd, RewardedAdEventType, AdEventType, TestIds } from 'react-native-google-mobile-ads';
-import { authClient, BACKEND_URL } from '../../lib/auth-client'; 
+import mobileAds, { useRewardedAd, TestIds } from 'react-native-google-mobile-ads';
+import { authClient, BACKEND_URL } from '../../lib/auth-client';
+
+// 1. Initialize the Google Mobile Ads SDK (Required before fetching any ads)
+mobileAds().initialize();
 
 interface RewardCardProps {
   onClaimSuccess: () => void;
@@ -12,79 +14,75 @@ interface RewardCardProps {
 // Use Google's Test ID for development to prevent account bans!
 const adUnitId = __DEV__ ? TestIds.REWARDED : 'ca-app-pub-xxxxxxxxxxxxxxxx/yyyyyyyyyy';
 
-const rewarded = RewardedAd.createForAdRequest(adUnitId, {
-  requestNonPersonalizedAdsOnly: true,
-});
-
 export default function RewardCard({ onClaimSuccess }: RewardCardProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  
-  const [isAdLoaded, setIsAdLoaded] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false);
 
+  // 2. Use the official hook to perfectly manage the ad lifecycle
+  const { isLoaded, isClosed, isEarnedReward, load, show, error } = useRewardedAd(adUnitId, {
+    requestNonPersonalizedAdsOnly: true,
+  });
+
+  // Load the ad as soon as the component mounts
   useEffect(() => {
-    const unsubscribeLoaded = rewarded.addAdEventListener(RewardedAdEventType.LOADED, () => {
-      setIsAdLoaded(true);
-    });
+    load();
+  }, [load]);
 
-    const unsubscribeEarned = rewarded.addAdEventListener(
-      RewardedAdEventType.EARNED_REWARD,
-      async reward => {
-        // The user finished the ad! Now we safely call your backend.
-        await grantTicketToUser();
-      },
-    );
+  // Log any network errors if the ad fails to fetch
+  useEffect(() => {
+    if (error) {
+      console.error('Failed to load Google Ad:', error);
+    }
+  }, [error]);
 
-    // ✅ FIXED: Changed to AdEventType.CLOSED
-    const unsubscribeClosed = rewarded.addAdEventListener(AdEventType.CLOSED, () => {
+  // 3. Handle the payout when the user finishes and closes the video
+  useEffect(() => {
+    if (isClosed) {
       setIsClaiming(false);
-      // Preload the next ad so they don't have to wait if they click claim again later
-      rewarded.load();
-    });
-
-    rewarded.load();
-
-    return () => {
-      unsubscribeLoaded();
-      unsubscribeEarned();
-      unsubscribeClosed();
-    };
-  }, []);
+      
+      if (isEarnedReward) {
+        grantTicketToUser();
+      }
+      
+      // Immediately preload the next ad for the future
+      load();
+    }
+  }, [isClosed, isEarnedReward, load]);
 
   const handlePressIn = () => Animated.spring(scaleAnim, { toValue: 0.90, useNativeDriver: true }).start();
   const handlePressOut = () => Animated.spring(scaleAnim, { toValue: 1, friction: 4, useNativeDriver: true }).start();
 
   const handleClaimPress = async () => {
-    setIsClaiming(true);
-    if (isAdLoaded) {
-      rewarded.show();
+    if (isLoaded) {
+      setIsClaiming(true);
+      show(); // Triggers the full-screen video ad
     } else {
-      Alert.alert("Ad Loading", "Please wait a moment for the ad to load and try again.");
-      setIsClaiming(false);
+      Alert.alert("Ad Loading", "Please wait a moment for the ad to buffer and try again.");
+      load(); // Force a retry if it got stuck
     }
   };
 
   const grantTicketToUser = async () => {
     try {
-      const { data, error } = await authClient.$fetch<any>(`${BACKEND_URL}/api/v1/users/me/claim-ad-reward`, {
+      const { error } = await authClient.$fetch<any>(`${BACKEND_URL}/api/v1/users/me/claim-ad-reward`, {
         method: 'POST'
       });
       
       if (error) {
-        const backendMessage = (error as any).error || error.message || 'Failed to claim reward';
-        throw new Error(backendMessage);
+        throw new Error((error as any).error || (error as any).message || 'Failed to claim reward');
       }
 
       Alert.alert("Ticket Claimed!", "A free ticket has been added to your inventory.");
       onClaimSuccess(); 
-    } catch (error: any) {
-      Alert.alert("Claim Error", error.message);
+    } catch (err: any) {
+      Alert.alert("Claim Error", err.message);
     }
   };
 
   return (
     <View>
       <Text style={styles.sectionTitle}>Daily Rewards</Text>
+      
       <View style={styles.rewardCard}>
         <View style={styles.rewardLeft}>
           <Text style={styles.rewardTitle}>Claim Free Ticket</Text>
@@ -96,14 +94,18 @@ export default function RewardCard({ onClaimSuccess }: RewardCardProps) {
 
         <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
           <TouchableOpacity 
-            style={[styles.claimButton, !isAdLoaded && { backgroundColor: '#334155' }]}
+            style={[styles.claimButton, !isLoaded && { backgroundColor: '#334155' }]}
             activeOpacity={0.8}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
             onPress={handleClaimPress}
-            disabled={isClaiming || !isAdLoaded}
+            disabled={isClaiming || !isLoaded}
           >
-            {isClaiming ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.claimButtonText}>Claim</Text>}
+            {isClaiming ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.claimButtonText}>Claim</Text>
+            )}
           </TouchableOpacity>
         </Animated.View>
       </View>
