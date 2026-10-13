@@ -103,43 +103,59 @@ export default function DlsHubHomeScreen() {
 
         {/* Ecosystem Links */}
         <Animated.View style={{ opacity: fadeAnim3, transform: [{ translateY: translateY3 }] }}>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
+          <View style={styles.quickLinks}>
             <TouchableOpacity 
-              style={{ flex: 1, backgroundColor: '#18181b', borderWidth: 1, borderColor: '#27272a', padding: 16, borderRadius: 16, alignItems: 'center' }}
+              style={styles.quickLinkCard}
               onPress={() => router.push('/leagues')}
+              activeOpacity={0.82}
             >
-              <Ionicons name="list" size={24} color="#f59e0b" style={{ marginBottom: 8 }} />
-              <Text style={{ color: '#fff', fontSize: 13, fontWeight: 'bold' }}>All Leagues</Text>
+              <View style={styles.quickLinkIconGold}>
+                <Ionicons name="list" size={20} color="#fbbf24" />
+              </View>
+              <Text style={styles.quickLinkTitle}>All Leagues</Text>
+              <Text style={styles.quickLinkCaption}>Browse competitions</Text>
+              <Ionicons name="arrow-forward" size={15} color="#71717a" style={styles.quickLinkArrow} />
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={{ flex: 1, backgroundColor: '#18181b', borderWidth: 1, borderColor: '#27272a', padding: 16, borderRadius: 16, alignItems: 'center' }}
+              style={styles.quickLinkCard}
               onPress={() => router.push('/tiers')}
+              activeOpacity={0.82}
             >
-              <Ionicons name="trophy" size={24} color="#38bdf8" style={{ marginBottom: 8 }} />
-              <Text style={{ color: '#fff', fontSize: 13, fontWeight: 'bold' }}>View Tiers</Text>
+              <View style={styles.quickLinkIconCyan}>
+                <Ionicons name="trophy" size={20} color="#22d3ee" />
+              </View>
+              <Text style={styles.quickLinkTitle}>View Tiers</Text>
+              <Text style={styles.quickLinkCaption}>Climb the ranks</Text>
+              <Ionicons name="arrow-forward" size={15} color="#71717a" style={styles.quickLinkArrow} />
             </TouchableOpacity>
           </View>
         </Animated.View>
 
         {/* Community Tournaments Card */}
         <Animated.View style={{ opacity: fadeAnim4, transform: [{ translateY: translateY4 }], marginTop: 24 }}>
-          <View style={{ backgroundColor: '#18181b', borderWidth: 1, borderColor: '#27272a', borderRadius: 16, padding: 20 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-              <Ionicons name="people-outline" size={20} color="#10b981" />
-              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Community Tournaments</Text>
+          <View style={styles.communityCard}>
+            <View style={styles.communityHeading}>
+              <View style={styles.communityIcon}>
+                <Ionicons name="people-outline" size={19} color="#34d399" />
+              </View>
+              <View style={styles.communityTitleBlock}>
+                <Text style={styles.communityEyebrow}>PLAY YOUR WAY</Text>
+                <Text style={styles.communityTitle}>Community Tournaments</Text>
+              </View>
             </View>
-            <Text style={{ color: '#a1a1aa', fontSize: 14, lineHeight: 22, marginBottom: 16 }}>
+            <Text style={styles.communityDescription}>
               Want to settle a debate? Host a private, unranked bracket for your friends. No tickets required.
             </Text>
             
             <TouchableOpacity 
-              style={{ backgroundColor: '#1f1f25', borderWidth: 1, borderColor: '#334155', paddingVertical: 14, borderRadius: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
+              style={styles.createMatchButton}
               onPress={() => router.push('/create-tournament')}
               activeOpacity={0.8}
             >
-              <Ionicons name="add-circle-outline" size={20} color="#fff" />
-              <Text style={{ color: '#fff', fontSize: 15, fontWeight: 'bold' }}>Create Custom Match</Text>
+              <Ionicons name="add-circle-outline" size={20} color="#22d3ee" />
+              <Text style={styles.createMatchText}>Create Custom Match</Text>
+              <Ionicons name="arrow-forward" size={17} color="#22d3ee" />
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -155,6 +171,31 @@ export default function DlsHubHomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f0f13' },
-  scrollContent: { padding: 20, gap: 24, zIndex: 1 }, 
+  container: { flex: 1, backgroundColor: '#09090b' },
+  scrollContent: { paddingHorizontal: 18, paddingTop: 18, paddingBottom: 34, gap: 22, zIndex: 1 },
+  quickLinks: { flexDirection: 'row', gap: 11 },
+  quickLinkCard: {
+    flex: 1,
+    minHeight: 128,
+    backgroundColor: '#14151b',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    padding: 14,
+    borderRadius: 17,
+    justifyContent: 'center',
+  },
+  quickLinkIconGold: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(245,158,11,0.11)', marginBottom: 11 },
+  quickLinkIconCyan: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(34,211,238,0.10)', marginBottom: 11 },
+  quickLinkTitle: { color: '#f4f4f5', fontSize: 14, fontWeight: '900', letterSpacing: 0.1 },
+  quickLinkCaption: { color: '#71717a', fontSize: 10, fontWeight: '600', marginTop: 4 },
+  quickLinkArrow: { position: 'absolute', right: 14, top: 15 },
+  communityCard: { backgroundColor: '#14151b', borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)', borderRadius: 18, padding: 17 },
+  communityHeading: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  communityIcon: { width: 40, height: 40, borderRadius: 13, backgroundColor: 'rgba(16,185,129,0.10)', borderWidth: 1, borderColor: 'rgba(16,185,129,0.2)', alignItems: 'center', justifyContent: 'center' },
+  communityTitleBlock: { flex: 1 },
+  communityEyebrow: { color: '#34d399', fontSize: 9, fontWeight: '900', letterSpacing: 1.2, marginBottom: 3 },
+  communityTitle: { color: '#f4f4f5', fontSize: 15, fontWeight: '900' },
+  communityDescription: { color: '#a1a1aa', fontSize: 12, lineHeight: 19, marginTop: 12, marginBottom: 15 },
+  createMatchButton: { backgroundColor: 'rgba(34,211,238,0.08)', borderWidth: 1, borderColor: 'rgba(34,211,238,0.22)', paddingHorizontal: 13, paddingVertical: 13, borderRadius: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+  createMatchText: { color: '#e4e4e7', fontSize: 13, fontWeight: '800', flex: 1 },
 });

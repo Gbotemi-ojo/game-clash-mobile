@@ -114,12 +114,12 @@ export default function RewardCard({ onClaimSuccess }: RewardCardProps) {
 }
 
 const styles = StyleSheet.create({
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#fff', marginBottom: 12 },
-  rewardCard: { backgroundColor: '#18181b', borderRadius: 16, padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#27272a' },
-  rewardLeft: { gap: 4 },
-  rewardTitle: { color: '#fff', fontSize: 18, fontWeight: '600' },
-  watchAdRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  watchAdText: { color: '#a1a1aa', fontSize: 13 },
-  claimButton: { backgroundColor: '#3b82f6', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
-  claimButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
+  sectionTitle: { fontSize: 17, fontWeight: '900', color: '#f4f4f5', marginBottom: 11, letterSpacing: 0.2 },
+  rewardCard: { backgroundColor: '#14151b', borderRadius: 16, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)' },
+  rewardLeft: { gap: 6, flex: 1, marginRight: 12 },
+  rewardTitle: { color: '#f4f4f5', fontSize: 15, fontWeight: '900' },
+  watchAdRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  watchAdText: { color: '#a1a1aa', fontSize: 11, fontWeight: '600' },
+  claimButton: { backgroundColor: '#22d3ee', minWidth: 86, alignItems: 'center', paddingHorizontal: 18, paddingVertical: 12, borderRadius: 11, shadowColor: '#22d3ee', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 4 },
+  claimButtonText: { color: '#071115', fontWeight: '900', fontSize: 13, letterSpacing: 0.2 },
 });

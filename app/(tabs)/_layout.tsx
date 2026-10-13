@@ -85,27 +85,49 @@ export default function TabLayout() {
         screenOptions={{
           headerShown: false,
           tabBarStyle: {
-            backgroundColor: '#121212',
-            borderTopColor: '#222',
+            backgroundColor: '#101116',
+            borderTopWidth: 0,
             height: tabBarHeight, 
             paddingBottom: 8 + insets.bottom, 
             paddingTop: 8,
+            elevation: 18,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -5 },
+            shadowOpacity: 0.35,
+            shadowRadius: 12,
           },
-          tabBarActiveTintColor: '#3b82f6', 
-          tabBarInactiveTintColor: '#888',
-          tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 4 }
+          tabBarActiveTintColor: '#22d3ee',
+          tabBarInactiveTintColor: '#71717a',
+          tabBarLabelStyle: {
+            fontSize: 10,
+            fontWeight: '700',
+            letterSpacing: 0.35,
+            marginTop: 4,
+          },
         }}>
         
-        <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: ({ color }) => <Foundation name="home" size={26} color={color} /> }} />
-        <Tabs.Screen name="tournaments" options={{ title: 'Arena', tabBarIcon: ({ color }) => <Ionicons name="trophy-outline" size={24} color={color} /> }} />
-        <Tabs.Screen name="stats" options={{ title: 'Stats', tabBarIcon: ({ color }) => <Ionicons name="bar-chart-outline" size={24} color={color} /> }} />
+        <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: ({ color, focused }) => (
+          <View style={[styles.tabIcon, focused && styles.activeTabIcon]}>
+            <Foundation name="home" size={24} color={color} />
+          </View>
+        ) }} />
+        <Tabs.Screen name="tournaments" options={{ title: 'Arena', tabBarIcon: ({ color, focused }) => (
+          <View style={[styles.tabIcon, focused && styles.activeTabIcon]}>
+            <Ionicons name="trophy-outline" size={23} color={color} />
+          </View>
+        ) }} />
+        <Tabs.Screen name="stats" options={{ title: 'Stats', tabBarIcon: ({ color, focused }) => (
+          <View style={[styles.tabIcon, focused && styles.activeTabIcon]}>
+            <Ionicons name="bar-chart-outline" size={23} color={color} />
+          </View>
+        ) }} />
 
         <Tabs.Screen
           name="chats"
           options={{
             title: 'Chats',
-            tabBarIcon: ({ color }) => (
-              <View style={styles.iconContainer}>
+            tabBarIcon: ({ color, focused }) => (
+              <View style={[styles.iconContainer, focused && styles.activeTabIcon]}>
                 <Ionicons name="chatbubbles-outline" size={24} color={color} />
                 {unreadChatsCount > 0 && (
                   <View style={styles.badge}>
@@ -121,11 +143,12 @@ export default function TabLayout() {
           name="profile"
           options={{
             title: 'Profile',
-            tabBarIcon: ({ color }) => (
+            tabBarIcon: ({ color, focused }) => (
               // 🔴 THE FIX: Animated Wrapper applies the glow if Setup is needed
               <Animated.View style={[
-                styles.iconContainer, 
-                needsSetup && { 
+                  styles.iconContainer,
+                  focused && styles.activeTabIcon,
+                  needsSetup && {
                   transform: [{ scale: pulseAnim }], 
                   shadowColor: '#22d3ee', shadowRadius: 10, shadowOpacity: 0.8, elevation: 10,
                   backgroundColor: 'rgba(34, 211, 238, 0.15)', borderRadius: 20, padding: 6, marginTop: -6 
@@ -147,10 +170,12 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, position: 'relative', backgroundColor: '#0f0f13' },
-  adContainer: { position: 'absolute', width: '100%', alignItems: 'center', backgroundColor: '#0f0f13', borderTopWidth: 1, borderTopColor: '#1f1f25' },
-  iconContainer: { position: 'relative', justifyContent: 'center', alignItems: 'center' },
-  badge: { position: 'absolute', top: -4, right: -8, backgroundColor: '#ef4444', minWidth: 18, height: 18, borderRadius: 9, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4, borderWidth: 1.5, borderColor: '#121212' },
+  container: { flex: 1, position: 'relative', backgroundColor: '#09090b' },
+  adContainer: { position: 'absolute', width: '100%', alignItems: 'center', backgroundColor: '#101116', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.07)' },
+  tabIcon: { width: 38, height: 30, justifyContent: 'center', alignItems: 'center', borderRadius: 12 },
+  activeTabIcon: { backgroundColor: 'rgba(34, 211, 238, 0.10)', shadowColor: '#22d3ee', shadowOffset: { width: 0, height: 0 }, shadowRadius: 8, shadowOpacity: 0.55, elevation: 6 },
+  iconContainer: { position: 'relative', width: 38, height: 30, justifyContent: 'center', alignItems: 'center', borderRadius: 12 },
+  badge: { position: 'absolute', top: -4, right: -5, backgroundColor: '#ef4444', minWidth: 18, height: 18, borderRadius: 9, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4, borderWidth: 1.5, borderColor: '#101116' },
   badgeText: { color: '#fff', fontSize: 10, fontWeight: '900' },
-  alertDot: { position: 'absolute', top: -2, right: -4, width: 10, height: 10, borderRadius: 5, backgroundColor: '#ef4444', borderWidth: 1, borderColor: '#121212' }
+  alertDot: { position: 'absolute', top: -2, right: -4, width: 10, height: 10, borderRadius: 5, backgroundColor: '#ef4444', borderWidth: 1, borderColor: '#101116' }
 });

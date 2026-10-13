@@ -177,11 +177,11 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequir
   if (activeLeague) {
     return (
       <View style={styles.mainCard}>
-        <View style={[styles.dateBadge, { backgroundColor: '#10b981' }]}>
-          <Ionicons name="checkmark-circle" size={14} color="#000" />
-          <Text style={styles.dateBadgeText}>League Active</Text>
+        <View style={styles.activeBadge}>
+          <Ionicons name="checkmark-circle" size={15} color="#10b981" />
+          <Text style={styles.activeBadgeText}>LEAGUE ACTIVE</Text>
         </View>
-        <Text style={styles.sectionTitle}>You are currently competing in {activeLeague.league?.name || 'an Official League'}.</Text>
+        <Text style={styles.activeLeagueName}>{activeLeague.league?.name || 'Official League'}</Text>
         <Text style={styles.cardDescription}>Check the Tournaments tab to view your upcoming fixtures and current ladder ranking.</Text>
       </View>
     );
@@ -192,15 +192,28 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequir
 
   return (
     <View>
-      <Text style={styles.sectionTitle}>Next Season Registration</Text>
+      <View style={styles.sectionHeading}>
+        <View style={styles.sectionHeadingAccent} />
+        <View>
+          <Text style={styles.sectionEyebrow}>COMPETE FOR THE TOP</Text>
+          <Text style={styles.sectionTitle}>Next Season Registration</Text>
+        </View>
+      </View>
       <View style={styles.mainCard}>
         
-        <View style={styles.dateBadge}>
-          <Ionicons name="calendar-outline" size={14} color="#000" />
-          <Text style={styles.dateBadgeText}>Next League Starts: June 1st</Text>
+        <View style={styles.cardTopline}>
+          <View style={styles.dateBadge}>
+            <Ionicons name="calendar-outline" size={14} color="#fbbf24" />
+            <Text style={styles.dateBadgeText}>NEXT SEASON</Text>
+          </View>
+          <View style={styles.openPill}>
+            <View style={styles.openDot} />
+            <Text style={styles.openText}>REGISTRATION OPEN</Text>
+          </View>
         </View>
 
-        <Text style={styles.cardDescription}>Configure your availability for automated league matchmaking.</Text>
+        <Text style={styles.leagueHeadline}>Your next challenge starts <Text style={styles.headlineAccent}>June 1st</Text></Text>
+        <Text style={styles.cardDescription}>Set your playing hours and get matched with competitors in the official league.</Text>
 
         <Animated.View style={{ transform: [{ scale: scaleAnim }], marginBottom: 24 }}>
           <TouchableOpacity 
@@ -211,23 +224,35 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequir
             onPress={handleJoinLeague}
             disabled={isLoading}
             testID="join-league-button"
+            accessibilityRole="button"
           >
-            {isLoading ? <ActivityIndicator color="#000" /> : <Text style={styles.ctaText}>Join Official League</Text>}
+            {isLoading ? (
+              <ActivityIndicator color="#071115" />
+            ) : (
+              <>
+                <Ionicons name="flash" size={18} color="#071115" />
+                <Text style={styles.ctaText}>Join Official League</Text>
+                <Ionicons name="arrow-forward" size={18} color="#071115" />
+              </>
+            )}
           </TouchableOpacity>
         </Animated.View>
 
         <View style={styles.tagRow}>
           <View style={styles.tag}>
-            <Ionicons name="people" size={16} color="#3b82f6" />
+            <Ionicons name="people" size={16} color="#22d3ee" />
             <Text style={styles.tagText}>20-Player League</Text>
           </View>
           <View style={styles.tag}>
-            <Ionicons name="football" size={16} color="#fff" />
+            <Ionicons name="football" size={16} color="#a1a1aa" />
             <Text style={styles.tagText}>1 Match per day</Text>
           </View>
         </View>
 
-        <Text style={styles.subHeading}>PRIZE & QUALIFICATION TIERS</Text>
+        <View style={styles.subHeadingRow}>
+          <Ionicons name="medal-outline" size={15} color="#f59e0b" />
+          <Text style={styles.subHeading}>PRIZE & QUALIFICATION TIERS</Text>
+        </View>
 
         <View style={styles.tierContainer}>
           <View style={styles.tierRow}>
@@ -244,15 +269,34 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequir
           </View>
         </View>
 
-        <Text style={styles.inputLabel}>Location Setup</Text>
+        <View style={styles.selectionHeading}>
+          <View style={styles.selectionIcon}>
+            <Ionicons name="location" size={16} color="#22d3ee" />
+          </View>
+          <View>
+            <Text style={styles.inputLabel}>Location Setup</Text>
+            <Text style={styles.selectionHint}>Used to coordinate fair match times</Text>
+          </View>
+        </View>
         <View style={styles.dropdownInput}>
           <Text style={styles.inputText}>{uiLocation}</Text>
-          <Ionicons name="location-outline" size={20} color="#888" />
+          <View style={styles.detectedPill}>
+            <Ionicons name="navigate" size={12} color="#22d3ee" />
+            <Text style={styles.detectedText}>DETECTED</Text>
+          </View>
         </View>
 
         {/* 🔴 THE FIX: onLayout captures the exact pixel coordinate so we know where to scroll */}
         <View testID="available-hours-section" onLayout={(e) => setTimeSectionY(e.nativeEvent.layout.y)}>
-          <Text style={styles.inputLabel}>Available Hours</Text>
+          <View style={styles.selectionHeading}>
+            <View style={styles.selectionIcon}>
+              <Ionicons name="time" size={16} color="#22d3ee" />
+            </View>
+            <View>
+              <Text style={styles.inputLabel}>Available Hours</Text>
+              <Text style={styles.selectionHint}>Choose when you can play each day</Text>
+            </View>
+          </View>
           
           {timeSlots.map((slot, index) => (
             <View key={slot.id} style={styles.timeSlotWrapper}>
@@ -266,10 +310,12 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequir
                 >
                   <Text style={styles.timeLabel}>From</Text>
                   <View style={styles.timeValueRow}>
-                    <Ionicons name="time-outline" size={16} color={hasTimeError && slot.start === '--:--' ? '#ef4444' : '#888'} />
+                    <Ionicons name="time-outline" size={16} color={hasTimeError && slot.start === '--:--' ? '#ef4444' : '#22d3ee'} />
                     <Text style={[styles.timeText, hasTimeError && slot.start === '--:--' && { color: '#ef4444' }]}>{slot.start}</Text>
                   </View>
                 </TouchableOpacity>
+
+                <Ionicons name="arrow-forward" size={15} color="#52525b" />
                 
                 {/* 🔴 Glows red if hasTimeError is triggered and end is empty */}
                 <TouchableOpacity 
@@ -279,7 +325,7 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequir
                 >
                   <Text style={styles.timeLabel}>To</Text>
                   <View style={styles.timeValueRow}>
-                    <Ionicons name="time-outline" size={16} color={hasTimeError && slot.end === '--:--' ? '#ef4444' : '#888'} />
+                    <Ionicons name="time-outline" size={16} color={hasTimeError && slot.end === '--:--' ? '#ef4444' : '#22d3ee'} />
                     <Text style={[styles.timeText, hasTimeError && slot.end === '--:--' && { color: '#ef4444' }]}>{slot.end}</Text>
                   </View>
                 </TouchableOpacity>
@@ -295,7 +341,7 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequir
 
           {timeSlots.length < 3 && (
             <TouchableOpacity style={styles.addSlotBtn} onPress={addTimeSlot}>
-              <Ionicons name="add-circle-outline" size={16} color="#3b82f6" />
+              <Ionicons name="add-circle-outline" size={17} color="#22d3ee" />
               <Text style={styles.addSlotText}>Add another time window</Text>
             </TouchableOpacity>
           )}
@@ -332,54 +378,85 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequir
 }
 
 const styles = StyleSheet.create({
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#fff', marginBottom: 12, marginTop: 8 },
-  mainCard: { backgroundColor: '#18181b', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#27272a' },
-  dateBadge: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', backgroundColor: '#f59e0b', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, gap: 6, marginBottom: 16 },
-  dateBadgeText: { color: '#000', fontWeight: '700', fontSize: 12 },
-  cardDescription: { color: '#a1a1aa', fontSize: 15, lineHeight: 22, marginBottom: 16 },
-  
-  // Tags & Tiers
-  tagRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
-  tag: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#27272a', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, gap: 8 },
-  tagText: { color: '#d4d4d8', fontSize: 13, fontWeight: '500' },
-  subHeading: { color: '#71717a', fontSize: 12, fontWeight: '800', letterSpacing: 1, marginBottom: 12 },
-  tierContainer: { gap: 12, marginBottom: 24 },
-  tierRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#222225', padding: 16, borderRadius: 12, position: 'relative', overflow: 'hidden' },
-  tierAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
-  tierIcon: { marginRight: 12, marginLeft: 4 },
-  tierText: { color: '#fff', fontSize: 14, fontWeight: '500', flex: 1 },
-  prizeBadge: { backgroundColor: '#064e3b', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, borderWidth: 1, borderColor: '#059669' },
-  prizeText: { color: '#34d399', fontWeight: 'bold', fontSize: 12 },
-  
-  // Inputs
-  inputLabel: { color: '#fff', fontSize: 14, fontWeight: '600', marginBottom: 8 },
-  dropdownInput: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#1f1f25', borderWidth: 1, borderColor: '#333', borderRadius: 10, padding: 16, marginBottom: 20 },
-  inputText: { color: '#fff', fontSize: 15 },
-  
-  // Dynamic Time Slots
-  timeSlotWrapper: { marginBottom: 12 },
-  timeRow: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-  timeInputBox: { flex: 1, backgroundColor: '#1f1f25', borderWidth: 1, borderColor: '#333', borderRadius: 10, padding: 12 },
-  timeLabel: { color: '#71717a', fontSize: 11, marginBottom: 4 },
+  sectionHeading: { flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: 13, marginTop: 4 },
+  sectionHeadingAccent: { width: 4, height: 35, borderRadius: 2, backgroundColor: '#22d3ee' },
+  sectionEyebrow: { color: '#22d3ee', fontSize: 9, fontWeight: '900', letterSpacing: 1.5, marginBottom: 3 },
+  sectionTitle: { fontSize: 19, fontWeight: '900', color: '#fafafa', letterSpacing: 0.2 },
+  mainCard: {
+    backgroundColor: '#14151b',
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.09)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.24,
+    shadowRadius: 16,
+    elevation: 5,
+  },
+  cardTopline: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  dateBadge: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(245,158,11,0.12)', paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, gap: 7, borderWidth: 1, borderColor: 'rgba(245,158,11,0.25)' },
+  dateBadgeText: { color: '#fbbf24', fontWeight: '900', fontSize: 10, letterSpacing: 0.8 },
+  openPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(16,185,129,0.10)', paddingHorizontal: 9, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(16,185,129,0.2)' },
+  openDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981' },
+  openText: { color: '#34d399', fontSize: 8, fontWeight: '900', letterSpacing: 0.6 },
+  leagueHeadline: { color: '#f4f4f5', fontSize: 20, lineHeight: 27, fontWeight: '900', letterSpacing: -0.3, marginBottom: 7 },
+  headlineAccent: { color: '#22d3ee' },
+  cardDescription: { color: '#a1a1aa', fontSize: 13, lineHeight: 20, marginBottom: 18 },
+  activeBadge: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(16,185,129,0.12)', paddingHorizontal: 11, paddingVertical: 7, borderRadius: 20, gap: 7, marginBottom: 14, borderWidth: 1, borderColor: 'rgba(16,185,129,0.22)' },
+  activeBadgeText: { color: '#34d399', fontWeight: '900', fontSize: 10, letterSpacing: 0.8 },
+  activeLeagueName: { color: '#fafafa', fontSize: 21, fontWeight: '900', letterSpacing: 0.2, marginBottom: 8 },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 23 },
+  tag: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.045)', paddingHorizontal: 11, paddingVertical: 8, borderRadius: 20, gap: 7, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
+  tagText: { color: '#d4d4d8', fontSize: 12, fontWeight: '700' },
+  subHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 12 },
+  subHeading: { color: '#a1a1aa', fontSize: 10, fontWeight: '900', letterSpacing: 1.1 },
+  tierContainer: { gap: 9, marginBottom: 22 },
+  tierRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1b1c23', paddingVertical: 13, paddingHorizontal: 12, borderRadius: 12, position: 'relative', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.055)' },
+  tierAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3 },
+  tierIcon: { marginRight: 9, marginLeft: 4 },
+  tierText: { color: '#e4e4e7', fontSize: 12, fontWeight: '700', flex: 1 },
+  prizeBadge: { backgroundColor: 'rgba(16,185,129,0.10)', paddingHorizontal: 8, paddingVertical: 6, borderRadius: 7, borderWidth: 1, borderColor: 'rgba(16,185,129,0.25)' },
+  prizeText: { color: '#34d399', fontWeight: '900', fontSize: 10 },
+  selectionHeading: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 11 },
+  selectionIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(34,211,238,0.10)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(34,211,238,0.16)' },
+  inputLabel: { color: '#f4f4f5', fontSize: 13, fontWeight: '800', marginBottom: 2 },
+  selectionHint: { color: '#71717a', fontSize: 10, fontWeight: '500' },
+  dropdownInput: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#1a1b22', borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14, marginBottom: 20 },
+  inputText: { color: '#e4e4e7', fontSize: 13, fontWeight: '600', flexShrink: 1, marginRight: 8 },
+  detectedPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(34,211,238,0.08)', paddingHorizontal: 7, paddingVertical: 5, borderRadius: 8 },
+  detectedText: { color: '#22d3ee', fontSize: 8, fontWeight: '900', letterSpacing: 0.5 },
+  timeSlotWrapper: { marginBottom: 10 },
+  timeRow: { flexDirection: 'row', gap: 7, alignItems: 'center' },
+  timeInputBox: { flex: 1, backgroundColor: '#1a1b22', borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 11 },
+  timeLabel: { color: '#71717a', fontSize: 9, fontWeight: '800', letterSpacing: 0.8, marginBottom: 5, textTransform: 'uppercase' },
   timeValueRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  timeText: { color: '#fff', fontSize: 15 },
-  removeBtn: { padding: 10, backgroundColor: '#27272a', borderRadius: 8, borderWidth: 1, borderColor: '#333' },
-  
-  addSlotBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, marginBottom: 8 },
-  addSlotText: { color: '#3b82f6', fontSize: 13, fontWeight: '600' },
-  
-  // Button
-  ctaButton: { backgroundColor: '#f59e0b', paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
-  ctaText: { color: '#000', fontSize: 16, fontWeight: 'bold' },
-
-  // Modal Styles
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center' },
-  pickerBox: { backgroundColor: '#18181b', width: 280, height: 400, borderRadius: 16, borderWidth: 1, borderColor: '#27272a', overflow: 'hidden' },
-  pickerHeader: { backgroundColor: '#27272a', padding: 16, alignItems: 'center' },
-  pickerTitle: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  timeOption: { padding: 16, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#27272a' },
-  timeOptionText: { color: '#d4d4d8', fontSize: 18 },
-  activeTimeText: { color: '#f59e0b', fontWeight: 'bold', fontSize: 20 },
-  closePickerBtn: { backgroundColor: '#222225', padding: 16, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#333' },
-  closePickerText: { color: '#ef4444', fontWeight: 'bold', fontSize: 16 }
+  timeText: { color: '#f4f4f5', fontSize: 14, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  removeBtn: { padding: 9, backgroundColor: 'rgba(239,68,68,0.08)', borderRadius: 9, borderWidth: 1, borderColor: 'rgba(239,68,68,0.18)' },
+  addSlotBtn: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 9, marginBottom: 5 },
+  addSlotText: { color: '#22d3ee', fontSize: 12, fontWeight: '800' },
+  ctaButton: {
+    backgroundColor: '#22d3ee',
+    minHeight: 56,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexDirection: 'row',
+    shadowColor: '#22d3ee',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.32,
+    shadowRadius: 12,
+    elevation: 7,
+  },
+  ctaText: { color: '#071115', fontSize: 15, fontWeight: '900', letterSpacing: 0.2 },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.82)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  pickerBox: { backgroundColor: '#15161c', width: '100%', maxWidth: 320, height: 400, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },
+  pickerHeader: { backgroundColor: '#1e2028', padding: 17, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' },
+  pickerTitle: { color: '#f4f4f5', fontWeight: '900', fontSize: 15, letterSpacing: 0.2 },
+  timeOption: { padding: 15, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.055)' },
+  timeOptionText: { color: '#d4d4d8', fontSize: 17, fontVariant: ['tabular-nums'] },
+  activeTimeText: { color: '#22d3ee', fontWeight: '900', fontSize: 19 },
+  closePickerBtn: { backgroundColor: '#1b1c23', padding: 15, alignItems: 'center', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.07)' },
+  closePickerText: { color: '#f87171', fontWeight: '800', fontSize: 14 }
 });

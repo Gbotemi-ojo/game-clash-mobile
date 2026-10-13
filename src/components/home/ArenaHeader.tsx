@@ -56,11 +56,25 @@ export default function ArenaHeader({ onOpenMenu, ticketCount = 0 }: { onOpenMen
 
   return (
     <View style={styles.header}>
-      <TouchableOpacity onPress={onOpenMenu} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-        <Ionicons name="menu" size={28} color="#fff" />
+      <TouchableOpacity
+        style={styles.iconButton}
+        onPress={onOpenMenu}
+        hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
+        accessibilityRole="button"
+        accessibilityLabel="Open menu"
+      >
+        <Ionicons name="menu" size={23} color="#e4e4e7" />
       </TouchableOpacity>
       
-      <Text style={styles.headerLogo}>DLS HUB</Text>
+      <View style={styles.brandBlock}>
+        <View style={styles.brandTitleRow}>
+          <View style={styles.brandMark}>
+            <Ionicons name="flash" size={14} color="#09090b" />
+          </View>
+          <Text style={styles.headerLogo}>GAME CLASH</Text>
+        </View>
+        <Text style={styles.headerSubtitle}>DREAM LEAGUE SOCCER</Text>
+      </View>
       
       <View style={styles.headerRight}>
         <View style={styles.ticketPill}>
@@ -69,11 +83,13 @@ export default function ArenaHeader({ onOpenMenu, ticketCount = 0 }: { onOpenMen
         </View>
         
         <TouchableOpacity 
-          style={styles.bellContainer} 
+          style={[styles.iconButton, styles.bellContainer]}
           onPress={() => router.push('/notifications')}
           hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
+          accessibilityRole="button"
+          accessibilityLabel="Notifications"
         >
-          <Ionicons name="notifications-outline" size={24} color="#fff" />
+          <Ionicons name="notifications-outline" size={21} color="#e4e4e7" />
           
           {/* The Unread Badge */}
           {unreadCount > 0 && (
@@ -92,39 +108,70 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    minHeight: 68,
+    backgroundColor: '#101116',
     borderBottomWidth: 1,
-    borderBottomColor: '#1f1f25'
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  iconButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1a1b21',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  brandBlock: { flex: 1, marginLeft: 12 },
+  brandTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  brandMark: {
+    width: 21,
+    height: 21,
+    borderRadius: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#22d3ee',
   },
   headerLogo: {
-    fontSize: 22,
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#f4f4f5',
+    letterSpacing: 1.1,
+  },
+  headerSubtitle: {
+    color: '#71717a',
+    fontSize: 8,
     fontWeight: '800',
-    color: '#93c5fd',
-    letterSpacing: 1
+    letterSpacing: 1.35,
+    marginTop: 3,
+    marginLeft: 28,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16
+    gap: 9,
   },
   ticketPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#272730',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 6
+    backgroundColor: 'rgba(245, 158, 11, 0.10)',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.25)',
   },
   ticketCount: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 14
+    color: '#f4f4f5',
+    fontWeight: '800',
+    fontSize: 13,
   },
   bellContainer: {
     position: 'relative',
-    padding: 2,
   },
   badge: {
     position: 'absolute',
@@ -138,7 +185,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 4,
     borderWidth: 1.5,
-    borderColor: '#0f0f13'
+    borderColor: '#101116',
   },
   badgeText: {
     color: '#fff',

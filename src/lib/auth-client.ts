@@ -3,7 +3,9 @@ import { createAuthClient } from "better-auth/react";
 import { expoClient } from "@better-auth/expo/client";
 import * as SecureStore from "expo-secure-store";
 
-export const BACKEND_URL = "http://192.168.43.131:5000";
+export const BACKEND_URL = "http://192.168.0.197:5000";
+
+const AUTH_FETCH_TIMEOUT_MS = 15_000;
 
 export const authClient = createAuthClient({
     baseURL: BACKEND_URL,
@@ -30,10 +32,42 @@ export const authClient = createAuthClient({
                 headers.set('Content-Type', 'application/json');
             }
 
-            return fetch(url, {
-                ...init,
-                headers, 
-            });
+            const controller = new AbortController();
+            const callerSignal = init?.signal;
+            let timedOut = false;
+            const timeoutId = setTimeout(() => {
+                timedOut = true;
+                controller.abort();
+            }, AUTH_FETCH_TIMEOUT_MS);
+            const abortFromCaller = () => controller.abort();
+
+            if (callerSignal?.aborted) {
+                controller.abort();
+            } else {
+                callerSignal?.addEventListener('abort', abortFromCaller, { once: true });
+            }
+
+            try {
+                return await fetch(url, {
+                    ...init,
+                    headers,
+                    signal: controller.signal,
+                });
+            } catch (error) {
+                if (timedOut) {
+                    throw new Error(`Request to ${String(url)} timed out after ${AUTH_FETCH_TIMEOUT_MS}ms`);
+                }
+
+                if (callerSignal?.aborted || (error instanceof Error && error.name === 'AbortError')) {
+                    throw error;
+                }
+
+                console.error(`[AUTH FETCH] Request to ${String(url)} failed:`, error);
+                throw error;
+            } finally {
+                clearTimeout(timeoutId);
+                callerSignal?.removeEventListener('abort', abortFromCaller);
+            }
         },
     },
 });

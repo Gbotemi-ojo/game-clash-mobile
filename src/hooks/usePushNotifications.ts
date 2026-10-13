@@ -38,7 +38,7 @@ export function usePushNotifications() {
     const sendTokenToBackend = async () => {
       try {
         console.log(`[PUSH] Sending token to backend...`);
-        const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.43.131:5000';
+        const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.197:5000';
         
         let token = session?.session?.token;
         if (!token) {
@@ -117,7 +117,7 @@ async function registerForPushNotificationsAsync() {
     try {
       token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
     } catch (error) {
-      console.log('⚠️ Could not fetch Expo Push Token (Network/Emulator limitation). Skipping push registration.');
+      console.error('🔥 REAL PUSH ERROR:', error);
       return undefined;
     }
 

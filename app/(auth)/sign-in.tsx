@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign, FontAwesome5 } from '@expo/vector-icons';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { authClient } from '../../src/lib/auth-client';
+import { authClient, BACKEND_URL } from '../../src/lib/auth-client';
 import { COLORS } from '../../src/lib/theme';
 import { useAuth } from '../../src/context/AuthContext';
 
@@ -24,16 +24,27 @@ export default function SignInScreen() {
     setLoading(true);
 
     try {
+      console.log('[SIGN IN] Before GoogleSignin.hasPlayServices');
       await GoogleSignin.hasPlayServices();
+      console.log('[SIGN IN] After GoogleSignin.hasPlayServices');
+
+      console.log('[SIGN IN] Before GoogleSignin.signIn');
       const response = await GoogleSignin.signIn();
+      console.log('[SIGN IN] After GoogleSignin.signIn:', response.type);
 
       if (response.type === 'success') {
         if (response.data.idToken) {
+          console.log('[SIGN IN] Before authClient.signIn.social');
+          console.log("🔥 SENDING TOKEN TO:", BACKEND_URL);
           const { data, error } = await authClient.signIn.social({
             provider: "google",
             idToken: {
               token: response.data.idToken, 
             },
+          });
+          console.log('[SIGN IN] After authClient.signIn.social:', {
+            hasData: Boolean(data),
+            error: error?.message,
           });
 
           if (error) {
