@@ -17,6 +17,8 @@ interface RegistrationCardProps {
 export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequireScroll }: RegistrationCardProps) {
   const router = useRouter();
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const wizardScrollRef = useRef<ScrollView>(null);
+  const [isWizardVisible, setWizardVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
   const [uiLocation, setUiLocation] = useState('Detecting location...');
@@ -135,6 +137,7 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequir
       if (onRequireScroll && timeSectionY > 0) {
         onRequireScroll(timeSectionY + 200); // Scrolls directly to the time input!
       }
+      wizardScrollRef.current?.scrollToEnd({ animated: true });
       return;
     }
 
@@ -157,6 +160,7 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequir
 
       Alert.alert("Success!", "You have secured your spot in the next league.");
       onJoinSuccess(); 
+      setWizardVisible(false);
     } catch (error: any) {
       const errMsg = error.message || '';
       const isMissingDls = /dls|game.?[Ii][Dd]|player.?[Ii][Dd]/i.test(errMsg) || errMsg.includes('dlsPlayerId');
@@ -176,13 +180,20 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequir
 
   if (activeLeague) {
     return (
-      <View style={styles.mainCard}>
-        <View style={styles.activeBadge}>
-          <Ionicons name="checkmark-circle" size={15} color="#10b981" />
-          <Text style={styles.activeBadgeText}>LEAGUE ACTIVE</Text>
+      <View style={styles.activeLeagueCard}>
+        <View style={styles.activeLeagueTop}>
+          <View style={styles.activeBadge}>
+            <Ionicons name="checkmark-circle" size={15} color="#10b981" />
+            <Text style={styles.activeBadgeText}>LEAGUE ACTIVE</Text>
+          </View>
+          <Ionicons name="trophy" size={25} color="#fbbf24" />
         </View>
         <Text style={styles.activeLeagueName}>{activeLeague.league?.name || 'Official League'}</Text>
-        <Text style={styles.cardDescription}>Check the Tournaments tab to view your upcoming fixtures and current ladder ranking.</Text>
+        <Text style={styles.cardDescription}>Your season is underway. Your fixtures and standings are waiting in the Arena.</Text>
+        <TouchableOpacity style={styles.arenaLink} onPress={() => router.push('/(tabs)/tournaments')} activeOpacity={0.8}>
+          <Text style={styles.arenaLinkText}>OPEN MATCH ARENA</Text>
+          <Ionicons name="arrow-forward" size={16} color="#22d3ee" />
+        </TouchableOpacity>
       </View>
     );
   }
@@ -192,51 +203,69 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequir
 
   return (
     <View>
-      <View style={styles.sectionHeading}>
-        <View style={styles.sectionHeadingAccent} />
-        <View>
-          <Text style={styles.sectionEyebrow}>COMPETE FOR THE TOP</Text>
-          <Text style={styles.sectionTitle}>Next Season Registration</Text>
+      <View style={styles.joinHero}>
+        <View style={styles.heroOrb}>
+          <Ionicons name="trophy" size={24} color="#fbbf24" />
+        </View>
+        <View style={styles.joinHeroCopy}>
+          <View style={styles.heroEyebrowRow}>
+            <View style={styles.openDot} />
+            <Text style={styles.openText}>SEASON REGISTRATION OPEN</Text>
+          </View>
+          <Text style={styles.heroTitle}>Ready to compete?</Text>
+          <Text style={styles.heroSubtitle}>Build your schedule. Enter the league.</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.registerNowButton}
+          onPress={() => setWizardVisible(true)}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Register for the next season"
+        >
+          <Text style={styles.registerNowText}>REGISTER NOW</Text>
+          <Ionicons name="arrow-forward" size={17} color="#071115" />
+        </TouchableOpacity>
+        <View style={styles.heroMeta}>
+          <View style={styles.heroMetaItem}>
+            <Ionicons name="people" size={14} color="#22d3ee" />
+            <Text style={styles.heroMetaText}>20 players</Text>
+          </View>
+          <View style={styles.heroMetaDivider} />
+          <View style={styles.heroMetaItem}>
+            <Ionicons name="calendar-outline" size={14} color="#fbbf24" />
+            <Text style={styles.heroMetaText}>Season starts June 1</Text>
+          </View>
         </View>
       </View>
-      <View style={styles.mainCard}>
-        
-        <View style={styles.cardTopline}>
-          <View style={styles.dateBadge}>
-            <Ionicons name="calendar-outline" size={14} color="#fbbf24" />
-            <Text style={styles.dateBadgeText}>NEXT SEASON</Text>
+
+      <Modal
+        visible={isWizardVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setWizardVisible(false)}
+      >
+        <View style={styles.wizardContainer}>
+          <View style={styles.wizardHeader}>
+            <View>
+              <Text style={styles.wizardEyebrow}>OFFICIAL LEAGUE</Text>
+              <Text style={styles.wizardTitle}>Set up your season</Text>
+            </View>
+            <TouchableOpacity style={styles.wizardClose} onPress={() => setWizardVisible(false)} accessibilityRole="button" accessibilityLabel="Close registration">
+              <Ionicons name="close" size={22} color="#e4e4e7" />
+            </TouchableOpacity>
           </View>
-          <View style={styles.openPill}>
-            <View style={styles.openDot} />
-            <Text style={styles.openText}>REGISTRATION OPEN</Text>
+          <View style={styles.wizardStep}>
+            <View style={styles.wizardStepNumber}><Text style={styles.wizardStepNumberText}>01</Text></View>
+            <View>
+              <Text style={styles.wizardStepTitle}>Your availability</Text>
+              <Text style={styles.wizardStepCaption}>Choose when opponents can reach you</Text>
+            </View>
           </View>
-        </View>
+          <ScrollView ref={wizardScrollRef} contentContainerStyle={styles.wizardScroll} showsVerticalScrollIndicator={false}>
+            <View style={styles.mainCard}>
 
         <Text style={styles.leagueHeadline}>Your next challenge starts <Text style={styles.headlineAccent}>June 1st</Text></Text>
-        <Text style={styles.cardDescription}>Set your playing hours and get matched with competitors in the official league.</Text>
-
-        <Animated.View style={{ transform: [{ scale: scaleAnim }], marginBottom: 24 }}>
-          <TouchableOpacity 
-            style={styles.ctaButton} 
-            activeOpacity={0.9}
-            onPressIn={handlePressIn}
-            onPressOut={handlePressOut}
-            onPress={handleJoinLeague}
-            disabled={isLoading}
-            testID="join-league-button"
-            accessibilityRole="button"
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#071115" />
-            ) : (
-              <>
-                <Ionicons name="flash" size={18} color="#071115" />
-                <Text style={styles.ctaText}>Join Official League</Text>
-                <Ionicons name="arrow-forward" size={18} color="#071115" />
-              </>
-            )}
-          </TouchableOpacity>
-        </Animated.View>
+        <Text style={styles.cardDescription}>Choose your location and available match times. Your schedule helps us find fair matchups.</Text>
 
         <View style={styles.tagRow}>
           <View style={styles.tag}>
@@ -347,7 +376,33 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequir
           )}
         </View>
 
-      </View>
+        <Animated.View style={{ transform: [{ scale: scaleAnim }], marginTop: 18 }}>
+          <TouchableOpacity
+            style={styles.ctaButton}
+            activeOpacity={0.9}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            onPress={handleJoinLeague}
+            disabled={isLoading}
+            testID="join-league-button"
+            accessibilityRole="button"
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#071115" />
+            ) : (
+              <>
+                <Ionicons name="flash" size={18} color="#071115" />
+                <Text style={styles.ctaText}>Confirm Registration</Text>
+                <Ionicons name="arrow-forward" size={18} color="#071115" />
+              </>
+            )}
+          </TouchableOpacity>
+        </Animated.View>
+
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
 
       <Modal visible={!!pickerContext} transparent animationType="fade" onRequestClose={() => setPickerContext(null)}>
         <View style={styles.modalBackdrop}>
@@ -378,6 +433,33 @@ export default function RegistrationCard({ activeLeague, onJoinSuccess, onRequir
 }
 
 const styles = StyleSheet.create({
+  joinHero: { backgroundColor: '#14151b', borderRadius: 20, padding: 18, borderWidth: 1, borderColor: 'rgba(34,211,238,0.22)', shadowColor: '#22d3ee', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 4 },
+  heroOrb: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(245,158,11,0.11)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.2)', marginBottom: 15 },
+  joinHeroCopy: { marginBottom: 16 },
+  heroEyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 7 },
+  heroTitle: { color: '#fafafa', fontSize: 22, fontWeight: '900', letterSpacing: -0.3 },
+  heroSubtitle: { color: '#a1a1aa', fontSize: 12, marginTop: 5 },
+  registerNowButton: { minHeight: 49, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, borderRadius: 13, backgroundColor: '#22d3ee', shadowColor: '#22d3ee', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 },
+  registerNowText: { color: '#071115', fontSize: 13, fontWeight: '900', letterSpacing: 0.8 },
+  heroMeta: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 15 },
+  heroMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  heroMetaText: { color: '#a1a1aa', fontSize: 10, fontWeight: '700' },
+  heroMetaDivider: { width: 1, height: 14, backgroundColor: 'rgba(255,255,255,0.12)' },
+  wizardContainer: { flex: 1, backgroundColor: '#09090b', paddingTop: 18 },
+  wizardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 17 },
+  wizardEyebrow: { color: '#22d3ee', fontSize: 9, fontWeight: '900', letterSpacing: 1.4, marginBottom: 4 },
+  wizardTitle: { color: '#fafafa', fontSize: 21, fontWeight: '900' },
+  wizardClose: { width: 40, height: 40, borderRadius: 13, backgroundColor: '#1a1b22', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
+  wizardStep: { flexDirection: 'row', alignItems: 'center', gap: 11, backgroundColor: 'rgba(34,211,238,0.06)', padding: 13, marginHorizontal: 20, marginBottom: 16, borderRadius: 13, borderWidth: 1, borderColor: 'rgba(34,211,238,0.14)' },
+  wizardStepNumber: { width: 33, height: 33, borderRadius: 11, backgroundColor: '#22d3ee', alignItems: 'center', justifyContent: 'center' },
+  wizardStepNumberText: { color: '#071115', fontSize: 11, fontWeight: '900' },
+  wizardStepTitle: { color: '#f4f4f5', fontSize: 13, fontWeight: '900' },
+  wizardStepCaption: { color: '#a1a1aa', fontSize: 10, marginTop: 3 },
+  wizardScroll: { paddingHorizontal: 18, paddingBottom: 32 },
+  activeLeagueCard: { backgroundColor: '#14151b', borderRadius: 20, padding: 18, borderWidth: 1, borderColor: 'rgba(16,185,129,0.2)' },
+  activeLeagueTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  arenaLink: { marginTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.07)', paddingTop: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  arenaLinkText: { color: '#22d3ee', fontSize: 10, fontWeight: '900', letterSpacing: 0.8 },
   sectionHeading: { flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: 13, marginTop: 4 },
   sectionHeadingAccent: { width: 4, height: 35, borderRadius: 2, backgroundColor: '#22d3ee' },
   sectionEyebrow: { color: '#22d3ee', fontSize: 9, fontWeight: '900', letterSpacing: 1.5, marginBottom: 3 },

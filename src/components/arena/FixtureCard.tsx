@@ -66,28 +66,33 @@ export default function FixtureCard({
       </View>
 
       {targetFixture.status === 'completed' ? (
-        <View style={styles.completedScoreContainer}>
-          <View style={styles.teamCol}>
-            <Text style={styles.teamNameText}>YOU</Text>
-            <Text style={[styles.scoreBigText, { color: myScore > oppScore ? '#10b981' : (myScore < oppScore ? '#ef4444' : '#fff') }]}>
-              {myScore}
-            </Text>
+        <View style={styles.faceoffContainer}>
+          <View style={styles.faceoffSide}>
+            <View style={styles.faceoffEmblem}><Ionicons name="shield" size={22} color="#22d3ee" /></View>
+            <Text style={styles.faceoffLabel}>YOU</Text>
+            <Text style={[styles.scoreBigText, { color: myScore > oppScore ? '#10b981' : (myScore < oppScore ? '#ef4444' : '#fff') }]}>{myScore}</Text>
           </View>
-          <View style={styles.ftCol}>
-            <Text style={styles.ftBadge}>FT</Text>
-          </View>
-          <View style={styles.teamCol}>
-            <Text style={styles.teamNameText}>{oppTeam}</Text>
-            <Text style={[styles.scoreBigText, { color: oppScore > myScore ? '#10b981' : (oppScore < myScore ? '#ef4444' : '#fff') }]}>
-              {oppScore}
-            </Text>
+          <View style={styles.faceoffCenter}><Text style={styles.ftBadge}>FULL TIME</Text><Text style={styles.vsText}>VS</Text></View>
+          <View style={styles.faceoffSide}>
+            <View style={[styles.faceoffEmblem, styles.opponentEmblem]}><Ionicons name="shield" size={22} color="#f59e0b" /></View>
+            <Text style={styles.faceoffLabel} numberOfLines={1}>{oppTeam}</Text>
+            <Text style={[styles.scoreBigText, { color: oppScore > myScore ? '#10b981' : (oppScore < myScore ? '#ef4444' : '#fff') }]}>{oppScore}</Text>
           </View>
         </View>
       ) : (
-        <View style={styles.versusContainer}>
-          <Text style={styles.teamText}>YOU</Text>
-          <Text style={styles.vsText}>VS</Text>
-          <Text style={styles.teamText}>{oppTeam}</Text>
+        <View style={styles.faceoffContainer}>
+          <View style={styles.faceoffSide}>
+            <View style={styles.faceoffEmblem}><Ionicons name="shield" size={22} color="#22d3ee" /></View>
+            <Text style={styles.faceoffLabel}>YOU</Text>
+          </View>
+          <View style={styles.faceoffCenter}>
+            <View style={styles.livePill}><View style={styles.liveDot} /><Text style={styles.liveText}>{targetFixture.status === 'in_progress' ? 'LIVE' : 'MATCHUP'}</Text></View>
+            <Text style={styles.vsText}>VS</Text>
+          </View>
+          <View style={styles.faceoffSide}>
+            <View style={[styles.faceoffEmblem, styles.opponentEmblem]}><Ionicons name="shield" size={22} color="#f59e0b" /></View>
+            <Text style={styles.faceoffLabel} numberOfLines={1}>{oppTeam}</Text>
+          </View>
         </View>
       )}
 

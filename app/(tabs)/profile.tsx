@@ -170,12 +170,21 @@ export default function ProfileScreen() {
             </View>
           </View>
           <View style={styles.userInfoRow}>
-            <View style={styles.avatarCircle}>
-              <FontAwesome5 name="user-astronaut" size={32} color="#22d3ee" />
+            <View style={styles.avatarFrame}>
+              <View style={styles.avatarCircle}>
+                <FontAwesome5 name="user-astronaut" size={31} color="#22d3ee" />
+              </View>
+              <View style={styles.rankPlate}>
+                <Ionicons name="shield-checkmark" size={11} color="#071115" />
+                <Text style={styles.rankPlateText}>{profileData.dlsPlayerId ? 'VERIFIED' : 'ROOKIE'}</Text>
+              </View>
             </View>
             <View style={styles.userInfoText}>
               <Text style={styles.userName}>{profileData.teamName || userProfile?.name || 'Contender'}</Text>
-              <Text style={styles.userEmail}>{userProfile?.email || ''}</Text>
+              <View style={styles.profileMeta}>
+                <Ionicons name="mail-outline" size={12} color="#71717a" />
+                <Text style={styles.userEmail}>{userProfile?.email || ''}</Text>
+              </View>
             </View>
           </View>
         </Animated.View>
@@ -262,18 +271,22 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.statsGrid}>
               <View style={styles.statSquare}>
+                <Ionicons name="football-outline" size={16} color="#22d3ee" style={styles.statIcon} />
                 <Text style={styles.statLabel}>PLAYED</Text>
                 <Text style={[styles.statValue, { color: '#fff' }]}>{profileData.matchesPlayed || 0}</Text>
               </View>
               <View style={styles.statSquare}>
+                <Ionicons name="trophy-outline" size={16} color="#10b981" style={styles.statIcon} />
                 <Text style={styles.statLabel}>WON</Text>
                 <Text style={[styles.statValue, { color: '#10b981' }]}>{profileData.matchesWon || 0}</Text>
               </View>
               <View style={styles.statSquare}>
+                <Ionicons name="close-circle-outline" size={16} color="#ef4444" style={styles.statIcon} />
                 <Text style={styles.statLabel}>LOST</Text>
                 <Text style={[styles.statValue, { color: '#ef4444' }]}>{profileData.matchesLost || 0}</Text>
               </View>
               <View style={styles.statSquare}>
+                <Ionicons name="analytics-outline" size={16} color="#f59e0b" style={styles.statIcon} />
                 <Text style={styles.statLabel}>WIN %</Text>
                 <Text style={[styles.statValue, { color: '#f59e0b' }]}>{profileData.winPercent || '0%'}</Text>
               </View>

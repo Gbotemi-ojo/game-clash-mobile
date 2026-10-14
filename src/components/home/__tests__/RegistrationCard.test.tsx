@@ -30,6 +30,15 @@ jest.mock('../../../lib/auth-client', () => ({
 
 import RegistrationCard from '../RegistrationCard';
 
+const openRegistrationWizard = async (screen: any) => {
+  await act(() => {
+    fireEvent.press(screen.getByLabelText('Register for the next season'));
+  });
+  await waitFor(() => {
+    expect(screen.getByTestId('join-league-button')).toBeTruthy();
+  });
+};
+
 const selectValidTimeSlot = async (screen: any) => {
   await act(() => {
     fireEvent.press(screen.getByTestId('time-start-1'));
@@ -67,6 +76,7 @@ describe('RegistrationCard', () => {
 
   it('calls onRequireScroll when joining with empty time slots', async () => {
     const screen = await render(<RegistrationCard {...defaultProps} />);
+    await openRegistrationWizard(screen);
 
     const timeSection = screen.getByTestId('available-hours-section');
     await act(() => {
@@ -90,6 +100,7 @@ describe('RegistrationCard', () => {
   it('shows alert when joining with empty time slots', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert');
     const screen = await render(<RegistrationCard {...defaultProps} />);
+    await openRegistrationWizard(screen);
 
     const joinButton = screen.getByTestId('join-league-button');
     await act(() => {
@@ -117,6 +128,7 @@ describe('RegistrationCard', () => {
 
   it('does not call onRequireScroll when onRequireScroll is not provided', async () => {
     const screen = await render(<RegistrationCard activeLeague={null} onJoinSuccess={jest.fn()} />);
+    await openRegistrationWizard(screen);
 
     const joinButton = screen.getByTestId('join-league-button');
     await act(() => {
@@ -130,6 +142,7 @@ describe('RegistrationCard', () => {
     it('shows Go to Profile button when API returns DLS-related error', async () => {
       const alertSpy = jest.spyOn(Alert, 'alert');
       const screen = await render(<RegistrationCard {...defaultProps} />);
+      await openRegistrationWizard(screen);
 
       await selectValidTimeSlot(screen);
 
@@ -159,6 +172,7 @@ describe('RegistrationCard', () => {
     it('navigates to profile tab when Go to Profile is pressed', async () => {
       const alertSpy = jest.spyOn(Alert, 'alert');
       const screen = await render(<RegistrationCard {...defaultProps} />);
+      await openRegistrationWizard(screen);
 
       await selectValidTimeSlot(screen);
 
@@ -197,6 +211,7 @@ describe('RegistrationCard', () => {
     it('shows plain alert for non-DLS errors', async () => {
       const alertSpy = jest.spyOn(Alert, 'alert');
       const screen = await render(<RegistrationCard {...defaultProps} />);
+      await openRegistrationWizard(screen);
 
       await selectValidTimeSlot(screen);
 

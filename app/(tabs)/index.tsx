@@ -103,7 +103,8 @@ export default function DlsHubHomeScreen() {
 
         {/* Ecosystem Links */}
         <Animated.View style={{ opacity: fadeAnim3, transform: [{ translateY: translateY3 }] }}>
-          <View style={styles.quickLinks}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickLinksScroll}>
+            <View style={styles.quickLinks}>
             <TouchableOpacity 
               style={styles.quickLinkCard}
               onPress={() => router.push('/leagues')}
@@ -129,7 +130,8 @@ export default function DlsHubHomeScreen() {
               <Text style={styles.quickLinkCaption}>Climb the ranks</Text>
               <Ionicons name="arrow-forward" size={15} color="#71717a" style={styles.quickLinkArrow} />
             </TouchableOpacity>
-          </View>
+            </View>
+          </ScrollView>
         </Animated.View>
 
         {/* Community Tournaments Card */}
@@ -173,9 +175,10 @@ export default function DlsHubHomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#09090b' },
   scrollContent: { paddingHorizontal: 18, paddingTop: 18, paddingBottom: 34, gap: 22, zIndex: 1 },
+  quickLinksScroll: { paddingRight: 3 },
   quickLinks: { flexDirection: 'row', gap: 11 },
   quickLinkCard: {
-    flex: 1,
+    width: 158,
     minHeight: 128,
     backgroundColor: '#14151b',
     borderWidth: 1,

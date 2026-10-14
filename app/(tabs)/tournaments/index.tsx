@@ -267,28 +267,36 @@ export default function TournamentsScreen() {
             {targetFixture ? (
               <>
                 {targetFixture.status === 'completed' ? (
-                  <View style={styles.completedScoreContainer}>
-                    <View style={styles.teamCol}>
-                      <Text style={styles.teamNameText}>YOU</Text>
-                      <Text style={[styles.scoreBigText, { color: myScore > oppScore ? '#10b981' : (myScore < oppScore ? '#ef4444' : '#fff') }]}>
-                        {myScore}
-                      </Text>
+                  <View style={styles.faceoffContainer}>
+                    <View style={styles.faceoffSide}>
+                      <View style={styles.faceoffEmblem}><Ionicons name="shield" size={22} color="#22d3ee" /></View>
+                      <Text style={styles.faceoffLabel}>YOU</Text>
+                      <Text style={[styles.scoreBigText, { color: myScore > oppScore ? '#10b981' : (myScore < oppScore ? '#ef4444' : '#fff') }]}>{myScore}</Text>
                     </View>
-                    <View style={styles.ftCol}>
-                      <Text style={styles.ftBadge}>FT</Text>
+                    <View style={styles.faceoffCenter}>
+                      <Text style={styles.ftBadge}>FULL TIME</Text>
+                      <Text style={styles.vsText}>VS</Text>
                     </View>
-                    <View style={styles.teamCol}>
-                      <Text style={styles.teamNameText}>{oppTeam}</Text>
-                      <Text style={[styles.scoreBigText, { color: oppScore > myScore ? '#10b981' : (oppScore < myScore ? '#ef4444' : '#fff') }]}>
-                        {oppScore}
-                      </Text>
+                    <View style={styles.faceoffSide}>
+                      <View style={[styles.faceoffEmblem, styles.opponentEmblem]}><Ionicons name="shield" size={22} color="#f59e0b" /></View>
+                      <Text style={styles.faceoffLabel} numberOfLines={1}>{oppTeam}</Text>
+                      <Text style={[styles.scoreBigText, { color: oppScore > myScore ? '#10b981' : (oppScore < myScore ? '#ef4444' : '#fff') }]}>{oppScore}</Text>
                     </View>
                   </View>
                 ) : (
-                  <View style={styles.versusContainer}>
-                    <Text style={styles.teamText}>YOU</Text>
-                    <Text style={styles.vsText}>VS</Text>
-                    <Text style={styles.teamText}>{oppTeam}</Text>
+                  <View style={styles.faceoffContainer}>
+                    <View style={styles.faceoffSide}>
+                      <View style={styles.faceoffEmblem}><Ionicons name="shield" size={22} color="#22d3ee" /></View>
+                      <Text style={styles.faceoffLabel}>YOU</Text>
+                    </View>
+                    <View style={styles.faceoffCenter}>
+                      <View style={styles.livePill}><View style={styles.liveDot} /><Text style={styles.liveText}>{targetFixture.status === 'in_progress' ? 'LIVE' : 'MATCHUP'}</Text></View>
+                      <Text style={styles.vsText}>VS</Text>
+                    </View>
+                    <View style={styles.faceoffSide}>
+                      <View style={[styles.faceoffEmblem, styles.opponentEmblem]}><Ionicons name="shield" size={22} color="#f59e0b" /></View>
+                      <Text style={styles.faceoffLabel} numberOfLines={1}>{oppTeam}</Text>
+                    </View>
                   </View>
                 )}
                 
@@ -341,15 +349,18 @@ export default function TournamentsScreen() {
                       {isWindowActive ? (
                         !amIReady ? (
                           <TouchableOpacity 
-                            style={[styles.syncButton, { backgroundColor: '#10b981' }]}
+                            style={[styles.syncButton, styles.startMatchButton]}
                             activeOpacity={0.9}
                             onPressIn={animatePressIn}
                             onPressOut={animatePressOut}
                             onPress={() => handleApiAction(targetFixture.id, 'ready')}
                             disabled={actionLoadingId === targetFixture.id}
                           >
-                            {actionLoadingId === targetFixture.id ? <ActivityIndicator color="#fff" /> : (
-                              <Text style={[styles.syncButtonText, { color: '#fff' }]}>▶ START MATCH</Text>
+                            {actionLoadingId === targetFixture.id ? <ActivityIndicator color="#071115" /> : (
+                              <>
+                              <Ionicons name="play" size={18} color="#071115" />
+                              <Text style={styles.syncButtonText}>START MATCH</Text>
+                              </>
                             )}
                           </TouchableOpacity>
                         ) : (
@@ -441,7 +452,7 @@ export default function TournamentsScreen() {
                   return (
                     <TouchableOpacity 
                       key={`left-${idx}`} 
-                      style={[styles.tableDataRow, isMe && styles.highlightRow]}
+                      style={[styles.tableDataRow, idx % 2 === 1 && styles.tableAltRow, isMe && styles.highlightRow]}
                       onPress={() => router.push({ pathname: '/player/[id]', params: { id: row.userId } })}
                       activeOpacity={0.7}
                     >
@@ -469,7 +480,7 @@ export default function TournamentsScreen() {
                   {leagueData.ladder?.map((row: any, idx: number) => {
                     const isMe = row.userId === myUserId;
                     return (
-                      <View key={`right-${idx}`} style={[styles.tableDataRow, isMe && styles.highlightRow]}>
+                      <View key={`right-${idx}`} style={[styles.tableDataRow, idx % 2 === 1 && styles.tableAltRow, isMe && styles.highlightRow]}>
                         <Text style={styles.statCell}>{row.played || row.matchesPlayed || 0}</Text>
                         <Text style={styles.statCell}>{row.wins || 0}</Text>
                         <Text style={styles.statCell}>{row.losses || 0}</Text>
